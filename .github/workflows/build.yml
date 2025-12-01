@@ -1,0 +1,29 @@
+name: Construir APK Android
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout del código
+      uses: actions/checkout@v3
+
+    - name: Instalar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Instalar Flet
+      run: pip install flet
+
+    - name: Construir APK
+      run: flet build apk --verbose
+
+    - name: Subir el APK generado
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-android
+        path: build/apk/
