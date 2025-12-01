@@ -1,23 +1,20 @@
-name: Construir APK Android
-on:
-  push:
-    branches:
-      - main
+name: Crear APK
+on: [push]
 
 jobs:
-  build:
+  android:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout del código
+      - name: Descargar Codigo
         uses: actions/checkout@v4
 
-      - name: Configurar Java 17
+      - name: Poner Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Instalar Python
+      - name: Poner Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -25,11 +22,11 @@ jobs:
       - name: Instalar Flet
         run: pip install flet
 
-      - name: Construir APK
-        run: flet build apk --verbose
+      - name: Fabricar APK
+        run: flet build apk -vv
 
-      - name: Subir el APK generado
+      - name: Guardar APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-android
+          name: mi-app-vegana
           path: build/apk/
