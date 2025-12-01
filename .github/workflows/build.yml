@@ -9,10 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout del código
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4  # Actualizado a v4
 
     - name: Instalar Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5 # Actualizado a v5
       with:
         python-version: '3.11'
 
@@ -23,7 +23,7 @@ jobs:
       run: flet build apk --verbose
 
     - name: Subir el APK generado
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4 # Actualizado a v4 (Esto arregla el error)
       with:
         name: app-android
         path: build/apk/
