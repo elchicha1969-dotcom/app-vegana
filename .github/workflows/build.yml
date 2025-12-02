@@ -22,11 +22,15 @@ jobs:
       - name: Instalar Flet
         run: pip install flet
 
-      - name: DIAGNOSTICO (Ver archivos)
-        run: ls -R
+      - name: DIAGNOSTICO (Ver archivos y requisitos)
+        run: |
+          ls -R
+          echo "--- Contenido de requirements.txt ---"
+          cat requirements.txt || echo "OJO: No existe requirements.txt"
 
       - name: Fabricar APK
-        run: flet build apk -vv
+        # Añadimos --module-name main para asegurar que encuentre el archivo
+        run: flet build apk --module-name main -vv
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
