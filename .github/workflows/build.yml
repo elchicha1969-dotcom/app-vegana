@@ -1,4 +1,4 @@
-name: Crear APK
+name: Crear APK Vegana Final
 on: [push]
 
 jobs:
@@ -19,19 +19,20 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar Flet
+      - name: Instalar Flet y Dependencias
         run: |
           pip install --upgrade pip
           pip install flet
 
-      - name: Crear requirements.txt (Automatico)
+      - name: Crear requirements.txt (Seguridad)
         run: echo "flet" > requirements.txt
 
       - name: Fabricar APK
+        # Aseguramos que busque 'main.py'
         run: flet build apk --module-name main -vv
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
         with:
-          name: mi-app-vegana
+          name: app-vegana-final
           path: build/apk/
