@@ -14,14 +14,71 @@ def main(page: ft.Page):
         "Kanit": "https://raw.githubusercontent.com/google/fonts/master/ofl/kanit/Kanit-Bold.ttf"
     }
 
-    # --- IMAGEN DE FONDO (PORTADA LOCAL) ---
-    FONDO_APP = "/portada.jpg"
+    # --- IMAGEN DE FONDO (PORTADA) ---
+    # Usamos URL de internet para evitar errores si falta la carpeta assets
+    FONDO_APP = "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=640&q=80"
+
+    # ==========================================
+    #   DATOS DE FÁBRICA (LO QUE VE TODO EL MUNDO)
+    # ==========================================
+    # Aquí es donde escribes lo que quieres que aparezca por defecto.
+    DATOS_INICIALES = {
+        "recetas": [
+            {
+                "id": "fija-1",
+                "titulo": "Tarta de Higos",
+                "desc": "Postre crudivegano dulce y natural.",
+                "tag": "Postre",
+                "imagen": "https://images.unsplash.com/photo-1602351447937-745cb720612f?auto=format&fit=crop&w=500&q=60",
+                "video": "",
+                "contenido": "Ingredientes: Higos frescos, base de almendras y dátiles.\n\nPreparación: Triturar la base, colocar los higos encima y refrigerar 2 horas."
+            },
+            {
+                "id": "fija-2",
+                "titulo": "Gofio Escaldado",
+                "desc": "El clásico canario, versión vegetal.",
+                "tag": "Entrante",
+                "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Gofio_escaldado.jpg/640px-Gofio_escaldado.jpg",
+                "video": "",
+                "contenido": "Usar caldo de verduras potente en lugar de caldo de pescado. Añadir hierbabuena y cebolla roja."
+            }
+        ],
+        "restaurantes": [
+            {
+                "id": "rest-1",
+                "titulo": "La Huerta Feliz",
+                "desc": "Comida casera en el centro.",
+                "tag": "Centro",
+                "imagen": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=500&q=60",
+                "video": "https://google.com/maps", 
+                "contenido": "Calle Mayor 22. Abierto todos los días. Tienen menú del día por 12€."
+            }
+        ],
+        "productos": [
+             {
+                "id": "prod-1",
+                "titulo": "Queso de Anacardos",
+                "desc": "Sabor curado intenso.",
+                "tag": "8.50€",
+                "imagen": "https://images.unsplash.com/photo-1624806992066-5ffcf8ca186c?auto=format&fit=crop&w=500&q=60",
+                "video": "",
+                "contenido": "Marca: NuttyCheese. Se encuentra en herbolarios y tiendas especializadas."
+            }
+        ]
+    }
 
     # --- GESTIÓN DE DATOS ---
-    def cargar_y_sanear(key):
+    def cargar_y_sanear(key, datos_por_defecto):
         try:
             datos = page.client_storage.get(key)
-            if datos is None: return []
+            
+            # Si NO hay datos (es la primera vez que se abre la app), usamos los INICIALES
+            if not datos: 
+                # Guardamos los datos de fábrica en la memoria del usuario
+                page.client_storage.set(key, datos_por_defecto)
+                return datos_por_defecto
+            
+            # Saneamiento de IDs
             lista_saneada = []
             cambios = False
             for item in datos:
@@ -30,14 +87,17 @@ def main(page: ft.Page):
                     item["id"] = str(uuid.uuid4())
                     cambios = True
                 lista_saneada.append(item)
+            
             if cambios: page.client_storage.set(key, lista_saneada)
             return lista_saneada
-        except: return []
+        except: 
+            return datos_por_defecto
 
+    # Cargamos la base de datos inyectando los DATOS_INICIALES
     db = {
-        "recetas": cargar_y_sanear("mis_recetas"),
-        "restaurantes": cargar_y_sanear("mis_restaurantes"),
-        "productos": cargar_y_sanear("mis_productos")
+        "recetas": cargar_y_sanear("mis_recetas", DATOS_INICIALES["recetas"]),
+        "restaurantes": cargar_y_sanear("mis_restaurantes", DATOS_INICIALES["restaurantes"]),
+        "productos": cargar_y_sanear("mis_productos", DATOS_INICIALES["productos"])
     }
     
     # ESTADO GLOBAL
@@ -55,7 +115,7 @@ def main(page: ft.Page):
     contenedor_contenido = ft.Container(expand=True, padding=10, alignment=ft.alignment.center)
     stack_principal = ft.Stack(controls=[imagen_fondo, contenedor_contenido], expand=True)
 
-    # --- LÓGICA DE ACTUALIZACIÓN (EDITAR) ---
+    # --- LÓGICA DE ACTUALIZACIÓN ---
     def ejecutar_edicion(clave_db, id_item, nuevos_datos):
         lista = db[clave_db]
         encontrado = False
@@ -68,11 +128,10 @@ def main(page: ft.Page):
         
         if encontrado:
             page.client_storage.set(f"mis_{clave_db}", lista)
-            page.open(ft.SnackBar(ft.Text("¡Artículo actualizado!"), bgcolor="blue"))
+            page.open(ft.SnackBar(ft.Text("¡Actualizado!"), bgcolor="blue"))
             cancelar_formulario(None) 
         else:
-            page.open(ft.SnackBar(ft.Text("Error: No se encontró el original."), bgcolor="red"))
-        
+            page.open(ft.SnackBar(ft.Text("Error al editar."), bgcolor="red"))
         page.update()
 
     # --- LÓGICA DE BORRADO ---
@@ -272,7 +331,7 @@ def main(page: ft.Page):
             columna.controls.append(ft.Container(alignment=ft.alignment.center, padding=20, content=ft.Container(padding=30, width=320, bgcolor="#99FFFFFF", border_radius=15, content=ft.Column([ft.Icon("info", size=40, color="grey"), ft.Text("Lista vacía", color="grey"), ft.Text("Usa (+) arriba.", size=12)], horizontal_alignment="center"))))
         else:
             for item in datos:
-                # Contenedor de imagen
+                # Contenedor de imagen cuadrado
                 imagen_componente = ft.Container(
                     width=110, 
                     height=110,
@@ -301,40 +360,35 @@ def main(page: ft.Page):
                         ]
                     )
 
-                # BOTÓN ENLACE CON URL VISIBLE
                 link_componente = ft.Container()
                 if item.get("video"):
                     url_completa = item["video"]
-                    # Cortamos la URL si es muy larga para que quepa (ej: "https://google.com/..." -> "google.com/...")
                     texto_boton = url_completa.replace("https://", "").replace("http://", "")
                     if len(texto_boton) > 15:
                         texto_boton = texto_boton[:12] + "..."
                         
                     link_componente = ft.TextButton(
-                        text=texto_boton, # Texto visible de la URL
-                        icon="link",      # Icono de enlace
+                        text=texto_boton,
+                        icon="link",
                         icon_color="blue",
-                        tooltip=url_completa, # Al dejar pulsado se ve entera
+                        tooltip=url_completa,
                         on_click=lambda e, url=url_completa: page.launch_url(url)
                     )
 
-                # Contenido de texto
                 info_componente = ft.Container(
                     expand=True,
                     padding=10,
                     content=ft.Column([
                         ft.Text(item["titulo"], weight="bold", size=16, font_family="Kanit", max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
                         ft.Text(item["desc"], size=12, color="grey", max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
-                        
                         contenido_extra,
-
                         ft.Row([
                             ft.Container(content=ft.Text(item["tag"], size=10, color="white"), bgcolor=color_tag, padding=4, border_radius=4),
                             ft.Container(expand=True),
-                            link_componente, # AQUI VA EL BOTÓN CON LA URL
+                            link_componente,
                             ft.IconButton(icon="edit", icon_size=18, icon_color="blue", on_click=lambda e, it=item: click_editar(it)),
                             ft.IconButton(icon="delete", icon_size=18, icon_color="red", on_click=lambda e, it=item: click_papelera(clave_db, it))
-                        ], spacing=0, alignment=ft.MainAxisAlignment.END) # Alineación ajustada
+                        ], spacing=0, alignment=ft.MainAxisAlignment.END)
                     ], spacing=2)
                 )
 
@@ -349,7 +403,6 @@ def main(page: ft.Page):
                         ], spacing=0, vertical_alignment=ft.CrossAxisAlignment.START)
                     )
                 )
-                
                 columna.controls.append(tarjeta)
         return columna
 
@@ -388,4 +441,4 @@ def main(page: ft.Page):
     layout_principal = ft.Column(spacing=0, expand=True, controls=[app_bar, ft.Container(content=stack_principal, expand=True), nav])
     page.add(layout_principal)
 
-ft.app(target=main, assets_dir="assets")
+ft.app(target=main)
