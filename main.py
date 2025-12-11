@@ -5,8 +5,8 @@ import json
 
 def main(page: ft.Page):
     # --- CONFIGURACIÓN BÁSICA ---
-    # Cambio 1: El título de la ventana
-    page.title = "Vegan Greenn"
+    # Cambio 1: El título de la ventana corregido
+    page.title = "Vegan Green"
     page.theme_mode = "light"
     page.padding = 0 
     page.bgcolor = "#202020" 
@@ -278,8 +278,8 @@ def main(page: ft.Page):
         if indice == 0:
             contenedor_contenido.alignment = ft.alignment.center
             contenedor_contenido.content = ft.Container() 
-            # Cambio 2: Título dinámico
-            titulo.value = "Vegan Greenn"
+            # Cambio 2: Título dinámico corregido
+            titulo.value = "Vegan Green"
         else:
             contenedor_contenido.alignment = ft.alignment.top_center
             if indice == 1: contenedor_contenido.content = obtener_lista_visual("recetas", "#E65100", "restaurant")
@@ -290,7 +290,7 @@ def main(page: ft.Page):
     def cambiar_tab(e): mostrar_seccion(e.control.selected_index)
 
     nav = ft.NavigationBar(selected_index=0, on_change=cambiar_tab, destinations=[ft.NavigationBarDestination(icon="home", label="Inicio"), ft.NavigationBarDestination(icon="menu_book", label="Recetas"), ft.NavigationBarDestination(icon="store", label="Sitios"), ft.NavigationBarDestination(icon="shopping_bag", label="Productos")])
-    titulo = ft.Text("Vegan Greenn", color="white", size=20, weight="bold")
+    titulo = ft.Text("Vegan Green", color="white", size=20, weight="bold")
     app_bar = ft.Container(padding=15, bgcolor="#388E3C", content=ft.Row([ft.Row([ft.Icon("eco", color="white"), titulo]), ft.Row([btn_add_top, btn_lock])], alignment="spaceBetween"))
     layout_principal = ft.Column(spacing=0, expand=True, controls=[app_bar, ft.Container(content=stack_principal, expand=True), nav])
     page.add(layout_principal)
