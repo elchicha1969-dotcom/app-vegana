@@ -1,4 +1,4 @@
-name: Crear APK Vegana Final
+name: Crear APK Vegan Green
 on: [push]
 
 jobs:
@@ -19,20 +19,21 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar Flet y Dependencias
+      - name: Instalar Flet
         run: |
           pip install --upgrade pip
           pip install flet
 
-      - name: Crear requirements.txt (Seguridad)
+      - name: Crear requirements.txt
         run: echo "flet" > requirements.txt
 
       - name: Fabricar APK
-        # Aseguramos que busque 'main.py'
-        run: flet build apk --module-name main -vv
+        # AQUÍ ESTÁ EL CAMBIO: --product-name "Vegan Green"
+        # Esto es lo que define el nombre bajo el icono en el móvil
+        run: flet build apk --module-name main --product-name "Vegan Green" --org "com.vegangreen.app" -vv
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-vegana-final
+          name: vegan-green-apk
           path: build/apk/
