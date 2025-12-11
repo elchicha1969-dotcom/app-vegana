@@ -13,7 +13,7 @@ def main(page: ft.Page):
     page.theme = ft.Theme(color_scheme_seed="#388E3C")
 
     # --- CONFIGURACIÓN FIREBASE (Pegar URL aquí si la tienes) ---
-    FIREBASE_URL = "" 
+    FIREBASE_URL = "https://app-vegana-bd2f0-default-rtdb.firebaseio.com/" 
     USAR_NUBE = bool(FIREBASE_URL)
 
     # --- FUENTES ---
@@ -308,3 +308,4 @@ def main(page: ft.Page):
     page.add(layout_principal)
 
 ft.app(target=main, assets_dir="assets")
+
