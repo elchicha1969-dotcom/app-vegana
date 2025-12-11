@@ -1,7 +1,7 @@
 import flet as ft
 import uuid
-import requests
 import json
+import urllib.request # Usamos librería nativa en vez de 'requests' para evitar errores en Android
 
 def main(page: ft.Page):
     # --- CONFIGURACIÓN BÁSICA ---
@@ -33,22 +33,34 @@ def main(page: ft.Page):
         "productos": []
     }
 
-    # --- GESTIÓN DE DATOS ---
+    # --- GESTIÓN DE DATOS (NATIVA) ---
     def cargar_datos_nube(coleccion):
         if not USAR_NUBE: return []
         try:
-            r = requests.get(f"{FIREBASE_URL}/{coleccion}.json")
-            if r.status_code == 200 and r.text != "null":
-                datos = r.json()
-                if isinstance(datos, dict): return list(datos.values())
-                elif isinstance(datos, list): return [x for x in datos if x is not None]
+            url = f"{FIREBASE_URL}/{coleccion}.json"
+            with urllib.request.urlopen(url) as response:
+                if response.status == 200:
+                    data = response.read().decode('utf-8')
+                    if data != "null":
+                        datos = json.loads(data)
+                        if isinstance(datos, dict): return list(datos.values())
+                        elif isinstance(datos, list): return [x for x in datos if x is not None]
             return []
-        except: return []
+        except Exception as e:
+            print(f"Error carga nube: {e}")
+            return []
 
     def guardar_datos_nube(coleccion, datos_lista):
         if not USAR_NUBE: return
-        try: requests.put(f"{FIREBASE_URL}/{coleccion}.json", json=datos_lista)
-        except: pass
+        try:
+            url = f"{FIREBASE_URL}/{coleccion}.json"
+            json_data = json.dumps(datos_lista).encode('utf-8')
+            req = urllib.request.Request(url, data=json_data, method='PUT')
+            req.add_header('Content-Type', 'application/json')
+            with urllib.request.urlopen(req) as response:
+                pass # Éxito silencioso
+        except Exception as e:
+            print(f"Error guarda nube: {e}")
 
     def cargar_y_sanear(key, datos_por_defecto):
         # 1. Nube
