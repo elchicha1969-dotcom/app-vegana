@@ -1,7 +1,10 @@
 name: Crear APK Vegan Green
 
-# CAMBIO: Usamos formato de lista en una línea para evitar errores de espacios
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -26,15 +29,16 @@ jobs:
           pip install --upgrade pip
           pip install flet
 
+      # Paso de seguridad por si no existe el archivo
       - name: Crear requirements.txt
         run: echo "flet" > requirements.txt
 
       - name: Fabricar APK
-        # El comando lee la configuración de pyproject.toml
+        # Comando limpio: Lee la configuración de tu archivo pyproject.toml (que está perfecto)
         run: flet build apk --module-name main -vv
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
         with:
-          name: vegan-green-apk
+          name: vegan-green-app
           path: build/apk/
