@@ -1,2 +1,10 @@
-- name: Fabricar APK
-  run: flet build apk --module-name main -vv
+[tool.flet]
+product_name = "Vegan Green"
+org = "com.vegangreen.app"
+app_description = "App de recetas veganas"
+copyright = "Copyright (c) 2025 Vegan Green"
+
+[tool.flet.app]
+path = "main.py"
+
+Con el `build.yml` corregido y el `pyproject.toml`, el círculo debería ponerse verde ✅.
