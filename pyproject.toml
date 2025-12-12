@@ -6,5 +6,3 @@ copyright = "Copyright (c) 2025 Vegan Green"
 
 [tool.flet.app]
 path = "main.py"
-
-Con el `build.yml` corregido y el `pyproject.toml`, el círculo debería ponerse verde ✅.
