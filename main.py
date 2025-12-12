@@ -18,7 +18,7 @@ def main(page: ft.Page):
     # Opción 1: Internet (Garantiza que se vea algo)
     FONDO_APP = "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=640&q=80"
     
-    # Opción 2: Local (Descomenta la línea de abajo y comenta la de arriba si tienes la carpeta 'assets')
+    # Opción 2: Local (Descomenta la línea de abajo si usas la carpeta assets)
     # FONDO_APP = "/portada.jpg" 
 
     # --- GESTIÓN DE DATOS ---
@@ -53,7 +53,6 @@ def main(page: ft.Page):
         fit=ft.ImageFit.COVER, 
         opacity=1.0, 
         expand=True,
-        # Si la imagen falla, muestra este color verde en su lugar
         error_content=ft.Container(bgcolor="#2E7D32") 
     )
     
@@ -73,7 +72,7 @@ def main(page: ft.Page):
         
         if encontrado:
             page.client_storage.set(f"mis_{clave_db}", lista)
-            page.open(ft.SnackBar(ft.Text("¡Actualizado!"), bgcolor="blue"))
+            page.open(ft.SnackBar(ft.Text("¡Artículo actualizado!"), bgcolor="blue"))
             cancelar_formulario(None) 
         else:
             page.open(ft.SnackBar(ft.Text("Error al editar."), bgcolor="red"))
@@ -159,14 +158,12 @@ def main(page: ft.Page):
     txt_cont = ft.TextField(label="Detalles", multiline=True, min_lines=5, bgcolor="#F5F5F5", color="black")
 
     def ajustar_etiquetas():
-        # Índice 2 es "Sitios" (Restaurantes)
+        # AQUÍ ESTABA EL ERROR: Usamos strings "map" y "description"
         if estado["seccion_actual"] == 2: 
             txt_desc.label = "Lugar / Dirección"
-            # CAMBIO AQUÍ: Usamos strings "map" en lugar de ft.icons.MAP
-            txt_desc.icon = "map"
-        else: # Recetas o Productos
+            txt_desc.icon = "map" 
+        else: 
             txt_desc.label = "Descripción"
-            # CAMBIO AQUÍ: Usamos string "description"
             txt_desc.icon = "description"
 
     def abrir_formulario_edicion(item):
@@ -302,7 +299,7 @@ def main(page: ft.Page):
                 if item.get("contenido"):
                     contenido_extra = ft.ExpansionTile(
                         title=ft.Text("Ver más", size=12, color="blue"),
-                        tile_padding=0,
+                        # Eliminamos 'tile_padding' para compatibilidad total
                         controls=[
                             ft.Container(
                                 padding=ft.padding.only(bottom=10),
