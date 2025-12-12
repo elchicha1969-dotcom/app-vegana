@@ -234,48 +234,70 @@ def main(page: ft.Page):
         else:
             for item in datos:
                 src = item.get("imagen") or IMAGEN_DEFAULT
+                tiene_imagen = bool(item.get("imagen"))
+                
+                # --- ARREGLO DE LA TARJETA (STACK) ---
+                # Usamos Stack para simular el fondo de imagen sin usar image_src
                 
                 # Elementos de la tarjeta
                 # 1. Información (Texto)
+                color_texto = "white" if tiene_imagen else "black"
+                color_icono = "white" if tiene_imagen else "#388E3C"
+                bg_overlay = "#99000000" if tiene_imagen else "#FFFFFF" # Fondo oscuro si hay foto
+                
                 info_column = ft.Column([
-                    ft.Text(item["titulo"], weight="bold", size=20, font_family="Kanit", color="white"),
-                    ft.Text(item["desc"], size=13, color="#EEEEEE"),
-                    ft.Divider(height=10, color="white24"),
                     ft.Row([
-                         ft.Container(content=ft.Text(item["tag"], size=10, color="white"), bgcolor=color_tag, padding=4, border_radius=4),
-                         ft.Container(expand=True),
-                         ft.IconButton("edit", icon_color="white", icon_size=20, on_click=lambda e, i=item: click_editar(i)),
-                         ft.IconButton("delete", icon_color="red", icon_size=20, on_click=lambda e, k=clave_db, i=item: click_papelera(k, i))
-                    ], alignment="end")
+                        ft.Icon(icono, size=24, color=color_icono),
+                        ft.Text(item["titulo"], weight="bold", size=20, font_family="Kanit", color=color_texto, expand=True),
+                        ft.Container(content=ft.Text(item["tag"], size=10, color="white", weight="bold"), bgcolor=color_tag, padding=5, border_radius=5)
+                    ], alignment="spaceBetween"),
+                    ft.Text(item["desc"], size=13, color=color_texto),
+                    ft.Divider(height=10, color="white24" if tiene_imagen else "black12"),
                 ])
                 
-                # Detalles extra (desplegable)
+                # Detalles extra
                 if item.get("contenido"):
-                    info_column.controls.insert(2, ft.ExpansionTile(
-                        title=ft.Text("Ver más", size=12, color="white"),
-                        icon_color="white", collapsed_icon_color="white",
+                    info_column.controls.append(ft.ExpansionTile(
+                        title=ft.Text("Ver más", size=12, color="blue"),
                         tile_padding=0,
-                        controls=[ft.Container(padding=10, content=ft.Text(item["contenido"], size=12, color="white"))]
+                        controls=[ft.Container(padding=ft.padding.only(bottom=10), content=ft.Text(item["contenido"], size=12, color=color_texto))]
                     ))
 
-                # 2. Imagen de fondo (Stack)
-                stack_card = []
-                # Capa 1: La imagen
-                stack_card.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#333333")))
-                # Capa 2: Velo negro para leer el texto
-                stack_card.append(ft.Container(bgcolor="#99000000", expand=True))
-                # Capa 3: El texto
-                stack_card.append(ft.Container(padding=15, content=info_column, expand=True))
+                # Botones
+                link_btn = ft.Container()
+                if item.get("video"):
+                    lbl = item["video"].replace("https://","")[:15]+"..."
+                    link_btn = ft.TextButton(lbl, icon="link", icon_color=color_icono, on_click=lambda e, u=item["video"]: page.launch_url(u))
+                    
+                actions = ft.Row([
+                    link_btn, ft.Container(expand=True),
+                    ft.IconButton("edit", icon_color=color_icono, icon_size=20, on_click=lambda e, i=item: click_editar(i)),
+                    ft.IconButton("delete", icon_color="red", icon_size=20, on_click=lambda e, k=clave_db, i=item: click_papelera(k, i))
+                ], spacing=0, alignment="end")
+                info_column.controls.append(actions)
 
-                # La tarjeta contenedora
+                # 2. Construcción del Stack
+                stack_card = []
+                # Capa 1: La imagen (solo si existe)
+                if tiene_imagen:
+                    stack_card.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#333333")))
+                
+                # Capa 2: Contenedor con color (transparente u opaco) y texto
+                stack_card.append(ft.Container(
+                    bgcolor=bg_overlay, 
+                    padding=15, 
+                    content=info_column,
+                    expand=True
+                ))
+
+                # La tarjeta contenedora con altura fija para que la foto luzca
                 tarjeta = ft.Card(
                     elevation=5,
+                    color="white", # Color base
                     margin=ft.margin.symmetric(horizontal=10),
                     clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
                     content=ft.Container(
-                        # Aquí definimos la altura. Si quieres que se adapte, puedes quitar height, 
-                        # pero para imagen de fondo suele quedar mejor fija o mínima.
-                        height=220, 
+                        height=250, # Altura fija para ver la foto bien
                         content=ft.Stack(controls=stack_card)
                     )
                 )
