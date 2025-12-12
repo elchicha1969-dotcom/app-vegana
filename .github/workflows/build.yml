@@ -1,8 +1,13 @@
 name: Crear APK Vegan Green
-on: [push]
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  android:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Descargar Codigo
@@ -19,18 +24,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar Flet
+      - name: Instalar Flet y Dependencias
         run: |
           pip install --upgrade pip
           pip install flet
 
-      # Este paso evita errores si se te olvida subir el archivo
       - name: Crear requirements.txt
         run: echo "flet" > requirements.txt
 
       - name: Fabricar APK
-        # ¡OJO! Aquí solo ponemos esto. El nombre lo coge de pyproject.toml
-        run: flet build apk -vv
+        # CORRECCIÓN: Quitamos --product-name y --org.
+        # Flet leerá estos datos automáticamente de tu archivo pyproject.toml
+        run: flet build apk --module-name main -vv
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
