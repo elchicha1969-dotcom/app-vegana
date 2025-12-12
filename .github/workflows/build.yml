@@ -29,7 +29,7 @@ jobs:
         run: echo "flet" > requirements.txt
         
       - name: Construir APK
-        # Solo usamos este comando. El nombre lo coge de tu archivo pyproject.toml
+        # ESTA ES LA LÍNEA CLAVE: Fíjate que es corta y no tiene --product-name
         run: flet build apk -vv
         
       - name: Subir APK
