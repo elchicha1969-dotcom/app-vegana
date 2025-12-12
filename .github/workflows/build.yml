@@ -1,10 +1,7 @@
 name: Crear APK Vegan Green
 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+# CAMBIO: Usamos formato de lista en una línea para evitar errores de espacios
+on: [push, workflow_dispatch]
 
 jobs:
   build:
@@ -34,7 +31,7 @@ jobs:
 
       - name: Fabricar APK
         # El comando lee la configuración de pyproject.toml
-        run: flet build apk -vv
+        run: flet build apk --module-name main -vv
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
