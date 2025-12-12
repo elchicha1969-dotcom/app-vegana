@@ -1,7 +1,7 @@
 import flet as ft
 import uuid
 import json
-import urllib.request
+import urllib.request 
 
 def main(page: ft.Page):
     # --- CONFIGURACIÓN BÁSICA ---
@@ -11,24 +11,13 @@ def main(page: ft.Page):
     page.bgcolor = "#202020" 
     page.theme = ft.Theme(color_scheme_seed="#388E3C")
 
-    # --- ☁️ CONFIGURACIÓN FIREBASE ---
-    # Pega tu URL aquí si quieres sincronización en la nube
+    # --- IMAGEN DE FONDO ---
+    FONDO_APP = "/portada.jpg"
+    IMAGEN_DEFAULT = "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
+
+    # --- CONFIGURACIÓN FIREBASE (Si la tienes) ---
     FIREBASE_URL = "" 
     USAR_NUBE = bool(FIREBASE_URL)
-
-    # --- FUENTES ---
-    page.fonts = {
-        "Kanit": "https://raw.githubusercontent.com/google/fonts/master/ofl/kanit/Kanit-Bold.ttf"
-    }
-
-    # --- IMAGEN DE FONDO ---
-    # Intenta usar local si existe, si no usa internet como respaldo
-    FONDO_APP = "/portada.jpg" 
-    # Alternativa segura si falla local:
-    # FONDO_APP = "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=640&q=80"
-    
-    # Imagen por defecto para recetas sin foto
-    IMAGEN_DEFAULT = "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
 
     # --- GESTIÓN DE DATOS ---
     def cargar_datos_nube(coleccion):
@@ -84,7 +73,9 @@ def main(page: ft.Page):
         "productos": cargar_y_sanear("mis_productos")
     }
     
-    estado = {"seccion_actual": 0, "admin": False, "id_editar": None} 
+    # ESTADO GLOBAL
+    # Guardamos aquí temporalmente lo que queremos borrar para que el diálogo lo sepa
+    estado = {"seccion_actual": 0, "admin": False, "borrar_clave": None, "borrar_id": None} 
 
     # --- CAPAS DE FONDO ---
     imagen_fondo = ft.Image(src=FONDO_APP, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#388E3C"))
@@ -95,66 +86,109 @@ def main(page: ft.Page):
         page.client_storage.set(f"mis_{clave_db}", db[clave_db])
         if USAR_NUBE: guardar_datos_nube(clave_db, db[clave_db])
 
-    # --- LÓGICA EDICIÓN/BORRADO ---
-    def ejecutar_edicion(clave_db, id_item, nuevos_datos):
-        lista = db[clave_db]
-        encontrado = False
-        for i, item in enumerate(lista):
-            if item.get("id") == id_item:
-                nuevos_datos["id"] = id_item
-                lista[i] = nuevos_datos
-                encontrado = True
-                break
-        if encontrado:
-            sincronizar_cambios(clave_db)
-            page.open(ft.SnackBar(ft.Text("¡Actualizado!"), bgcolor="blue"))
-            cancelar_formulario(None) 
-        else: page.open(ft.SnackBar(ft.Text("Error al editar."), bgcolor="red"))
-        page.update()
+    # --- LÓGICA DE BORRADO ---
+    def ejecutar_borrado_final():
+        clave = estado["borrar_clave"]
+        id_obj = estado["borrar_id"]
+        
+        if not clave or not id_obj: return
 
-    def ejecutar_borrado(clave, id_objetivo):
         lista_memoria = db[clave]
-        lista_nueva = [x for x in lista_memoria if x.get("id") != id_objetivo]
+        lista_nueva = [x for x in lista_memoria if x.get("id") != id_obj]
+        
         if len(lista_nueva) < len(lista_memoria):
             db[clave] = lista_nueva
             sincronizar_cambios(clave)
-            page.open(ft.SnackBar(ft.Text("¡Eliminado!"), bgcolor="green"))
-            mostrar_seccion(estado["seccion_actual"])
-        else: page.open(ft.SnackBar(ft.Text("Error al borrar."), bgcolor="red"))
+            page.open(ft.SnackBar(ft.Text("¡Eliminado correctamente!"), bgcolor="green"))
+        else:
+            # Si falla por ID, intentamos recargar y forzar
+            page.open(ft.SnackBar(ft.Text("Error al borrar. Intenta refrescar."), bgcolor="red"))
+        
+        mostrar_seccion(estado["seccion_actual"])
         page.update()
 
-    # --- SEGURIDAD ---
-    def solicitar_accion_protegida(accion_callback):
-        if estado["admin"]: accion_callback()
-        else: abrir_login_pin(accion_callback)
-
-    def abrir_login_pin(callback_exito):
-        campo_pin = ft.TextField(label="Introduce PIN", password=True, text_align="center", autofocus=True)
-        def validar(e):
-            if campo_pin.value == "1969":
-                estado["admin"] = True
+    # --- DIÁLOGO DE BORRADO UNIFICADO ---
+    # Un solo cuadro de diálogo que se adapta si eres admin o no
+    
+    campo_pin_borrar = ft.TextField(label="PIN (1969)", password=True, text_align="center")
+    
+    def confirmar_borrado_click(e):
+        # 1. Comprobar PIN si no es admin
+        if not estado["admin"]:
+            if campo_pin_borrar.value == "1969":
+                estado["admin"] = True # Hacemos admin temporalmente
                 actualizar_candado()
-                page.close(dlg)
-                callback_exito()
             else:
-                campo_pin.error_text = "Incorrecto"
-                campo_pin.update()
-        dlg = ft.AlertDialog(modal=True, title=ft.Text("Modo Admin"), content=ft.Column([ft.Text("Introduce el PIN:"), campo_pin], height=100, tight=True), actions=[ft.TextButton("Cancelar", on_click=lambda e: page.close(dlg)), ft.ElevatedButton("ENTRAR", on_click=validar)])
-        page.open(dlg)
+                campo_pin_borrar.error_text = "PIN Incorrecto"
+                campo_pin_borrar.update()
+                return # No borramos si el PIN está mal
+        
+        # 2. Si llegamos aquí, es que podemos borrar
+        page.close(dlg_borrar)
+        ejecutar_borrado_final()
 
-    def abrir_dialogo_borrar_final(clave, item):
-        def confirmar(e):
-            page.close(dlg)
-            ejecutar_borrado(clave, item.get("id"))
-        dlg = ft.AlertDialog(modal=True, title=ft.Text("¿Borrar?"), content=ft.Text(f"Eliminar: {item.get('titulo')}"), actions=[ft.TextButton("Cancelar", on_click=lambda e: page.close(dlg)), ft.ElevatedButton("BORRAR", on_click=confirmar, bgcolor="red", color="white")])
-        page.open(dlg)
+    dlg_borrar = ft.AlertDialog(
+        title=ft.Text("Eliminar Elemento"),
+        content=ft.Column([
+            ft.Text("¿Estás seguro de que quieres borrar esto?"),
+            ft.Divider(),
+            # El campo PIN solo se ve si NO eres admin
+            campo_pin_borrar
+        ], height=150, tight=True),
+        actions=[
+            ft.TextButton("Cancelar", on_click=lambda e: page.close(dlg_borrar)),
+            ft.ElevatedButton("BORRAR AHORA", on_click=confirmar_borrado_click, bgcolor="red", color="white")
+        ]
+    )
 
-    def click_papelera(clave, item):
-        solicitar_accion_protegida(lambda: abrir_dialogo_borrar_final(clave, item))
-    def click_editar(item):
-        solicitar_accion_protegida(lambda: abrir_formulario_edicion(item))
+    def abrir_menu_borrar(clave, item):
+        # Guardamos la intención de borrar en el estado global
+        estado["borrar_clave"] = clave
+        estado["borrar_id"] = item.get("id")
+        
+        # Preparamos el diálogo
+        campo_pin_borrar.value = ""
+        campo_pin_borrar.error_text = None
+        # Si ya es admin, ocultamos el campo PIN para que sea más rápido
+        campo_pin_borrar.visible = not estado["admin"]
+        
+        page.open(dlg_borrar)
 
-    # --- FORMULARIO ---
+    # --- OTROS DIÁLOGOS (Login Admin Global) ---
+    campo_pin_global = ft.TextField(label="PIN", password=True, text_align="center")
+    def login_admin_global(e):
+        if campo_pin_global.value == "1969":
+            estado["admin"] = True
+            actualizar_candado()
+            page.close(dlg_admin)
+            page.open(ft.SnackBar(ft.Text("Modo Admin Activado"), bgcolor="green"))
+        else:
+            campo_pin_global.error_text = "Mal"
+            campo_pin_global.update()
+
+    dlg_admin = ft.AlertDialog(
+        title=ft.Text("Acceso Admin"),
+        content=campo_pin_global,
+        actions=[ft.ElevatedButton("Entrar", on_click=login_admin_global)]
+    )
+
+    def toggle_admin(e):
+        if estado["admin"]:
+            estado["admin"] = False
+            actualizar_candado()
+            page.open(ft.SnackBar(ft.Text("Sesión cerrada"), bgcolor="orange"))
+        else:
+            page.open(dlg_admin)
+
+    def actualizar_candado():
+        btn_lock.icon = "lock_open" if estado["admin"] else "lock_outline"
+        btn_lock.icon_color = "yellow" if estado["admin"] else "white"
+        page.update()
+
+    btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=toggle_admin)
+
+    # --- FORMULARIO Y EDICIÓN ---
+    # (Misma lógica de antes)
     txt_titulo_form = ft.Text("Nuevo", size=24, weight="bold", color="#388E3C")
     txt_nombre = ft.TextField(label="Nombre", bgcolor="#F5F5F5", color="black")
     txt_desc = ft.TextField(label="Descripción", bgcolor="#F5F5F5", color="black")
@@ -163,130 +197,120 @@ def main(page: ft.Page):
     txt_vid = ft.TextField(label="URL Enlace", bgcolor="#F5F5F5", color="black", icon="link")
     txt_cont = ft.TextField(label="Detalles", multiline=True, min_lines=5, bgcolor="#F5F5F5", color="black")
 
-    # --- [CORRECCIÓN CRÍTICA] ---
-    # Usamos strings simples ("map", "description") en lugar de ft.icons...
-    def ajustar_etiquetas():
-        if estado["seccion_actual"] == 2:
-            txt_desc.label = "Lugar / Dirección"
-            txt_desc.icon = "map"  # STRING CORRECTO
+    def abrir_formulario(item=None):
+        # Si item existe, es editar. Si no, es nuevo.
+        es_editar = item is not None
+        txt_titulo_form.value = "Editar" if es_editar else "Nuevo"
+        
+        txt_nombre.value = item["titulo"] if es_editar else ""
+        txt_desc.value = item["desc"] if es_editar else ""
+        txt_tag.value = item["tag"] if es_editar else ""
+        txt_img.value = item["imagen"] if es_editar else ""
+        txt_vid.value = item["video"] if es_editar else ""
+        txt_cont.value = item["contenido"] if es_editar else ""
+        
+        estado["id_editar"] = item["id"] if es_editar else None
+        
+        imagen_fondo.visible = False
+        contenedor_contenido.bgcolor = "#F5F5F5"
+        contenedor_contenido.alignment = ft.alignment.top_center
+        contenedor_contenido.content = vista_formulario
+        btn_add_top.visible = False
+        page.update()
+
+    def click_editar(item):
+        # Solo permite editar si eres admin o conoces el PIN
+        if estado["admin"]:
+            abrir_formulario(item)
         else:
-            txt_desc.label = "Descripción"
-            txt_desc.icon = "description" # STRING CORRECTO
+            # Reutilizamos el dialogo de borrar para pedir PIN, un truco rápido
+            # Pero mejor abrir el login global primero
+            page.open(ft.SnackBar(ft.Text("Pulsa el candado arriba para identificarte primero."), bgcolor="blue"))
 
-    def abrir_formulario_edicion(item):
-        ajustar_etiquetas()
-        txt_titulo_form.value = "Editar"
-        txt_nombre.value = item.get("titulo", "")
-        txt_desc.value = item.get("desc", "")
-        txt_tag.value = item.get("tag", "")
-        txt_img.value = item.get("imagen", "")
-        txt_vid.value = item.get("video", "")
-        txt_cont.value = item.get("contenido", "")
-        estado["id_editar"] = item.get("id")
-        ir_formulario()
+    def guardar(e):
+        if not txt_nombre.value: return
+        datos = {"titulo": txt_nombre.value, "desc": txt_desc.value, "tag": txt_tag.value, "imagen": txt_img.value, "video": txt_vid.value, "contenido": txt_cont.value}
+        sec = estado["seccion_actual"]
+        target_db = "recetas" if sec == 1 else "restaurantes" if sec == 2 else "productos" if sec == 3 else None
+        
+        if target_db:
+            if estado["id_editar"]:
+                # Editar
+                for i, it in enumerate(db[target_db]):
+                    if it["id"] == estado["id_editar"]:
+                        datos["id"] = estado["id_editar"]
+                        db[target_db][i] = datos
+                        break
+            else:
+                # Nuevo
+                datos["id"] = str(uuid.uuid4())
+                db[target_db].append(datos)
+            
+            sincronizar_cambios(target_db)
+            page.open(ft.SnackBar(ft.Text("Guardado"), bgcolor="green"))
+            mostrar_seccion(sec)
 
-    def abrir_formulario_nuevo(e):
-        ajustar_etiquetas()
-        txt_titulo_form.value = "Nuevo"
-        for c in [txt_nombre, txt_desc, txt_tag, txt_img, txt_vid, txt_cont]: c.value = ""
-        estado["id_editar"] = None
-        ir_formulario()
-
+    def cancelar(e): mostrar_seccion(estado["seccion_actual"])
     def archivo_seleccionado(e: ft.FilePickerResultEvent):
         if e.files:
             txt_img.value = e.files[0].path
             txt_img.update()
             page.open(ft.SnackBar(ft.Text("Imagen OK"), bgcolor="green"))
+
     picker = ft.FilePicker(on_result=archivo_seleccionado)
     page.overlay.append(picker)
 
-    def guardar(e):
-        if not txt_nombre.value:
-            txt_nombre.error_text = "!"
-            page.update()
-            return
-        
-        imagen_final = txt_img.value if txt_img.value else ""
-        
-        datos = {"titulo": txt_nombre.value, "desc": txt_desc.value, "tag": txt_tag.value, "imagen": imagen_final, "video": txt_vid.value, "contenido": txt_cont.value}
-        sec = estado["seccion_actual"]
-        target_db = None
-        if sec == 1: target_db = "recetas"
-        elif sec == 2: target_db = "restaurantes"
-        elif sec == 3: target_db = "productos"
-        
-        if target_db:
-            if estado["id_editar"]: ejecutar_edicion(target_db, estado["id_editar"], datos)
-            else:
-                datos["id"] = str(uuid.uuid4())
-                db[target_db].append(datos)
-                sincronizar_cambios(target_db)
-                page.open(ft.SnackBar(ft.Text("Guardado"), bgcolor="green"))
-                cancelar_formulario(None)
+    vista_formulario = ft.Container(
+        bgcolor="white", padding=20, width=340, border_radius=15, alignment=ft.alignment.top_center, 
+        content=ft.Column([
+            txt_titulo_form, ft.Divider(), txt_nombre, txt_desc, txt_tag, ft.Divider(),
+            ft.Row([txt_img, ft.IconButton("photo_library", icon_color="#388E3C", on_click=lambda _: picker.pick_files())]),
+            txt_vid, txt_cont, ft.Container(height=20),
+            ft.Row([ft.ElevatedButton("Cancelar", on_click=cancelar), ft.ElevatedButton("GUARDAR", on_click=guardar, bgcolor="#388E3C", color="white")], alignment="center"),
+            ft.Container(height=30)
+        ], scroll="auto")
+    )
+    
+    btn_add_top = ft.IconButton(icon="add_circle", icon_color="white", icon_size=30, on_click=lambda e: abrir_formulario(None), visible=False)
 
-    def cancelar_formulario(e): mostrar_seccion(estado["seccion_actual"])
-
-    vista_formulario = ft.Container(bgcolor="white", padding=20, width=340, border_radius=15, alignment=ft.alignment.top_center, content=ft.Column([txt_titulo_form, ft.Divider(), txt_nombre, txt_desc, txt_tag, ft.Divider(), ft.Row([txt_img, ft.IconButton("photo_library", icon_color="#388E3C", on_click=lambda _: picker.pick_files())]), txt_vid, txt_cont, ft.Container(height=20), ft.Row([ft.ElevatedButton("Cancelar", on_click=cancelar_formulario, bgcolor="grey", color="white"), ft.ElevatedButton("GUARDAR", on_click=guardar, bgcolor="#388E3C", color="white")], alignment="center"), ft.Container(height=30)], scroll="auto"))
-
-    def ir_formulario():
-        imagen_fondo.visible = False 
-        contenedor_contenido.bgcolor = "#F5F5F5"
-        contenedor_contenido.alignment = ft.alignment.top_center 
-        contenedor_contenido.content = vista_formulario
-        btn_add_top.visible = False 
-        page.update()
-
-    def toggle_admin(e):
-        if estado["admin"]:
-            estado["admin"] = False
-            actualizar_candado()
-            page.open(ft.SnackBar(ft.Text("Sesión cerrada."), bgcolor="orange"))
-        else: abrir_login_pin(lambda: page.open(ft.SnackBar(ft.Text("¡Admin Activo!"), bgcolor="green")))
-        page.update()
-
-    def actualizar_candado():
-        if estado["admin"]:
-            btn_lock.icon = "lock_open"
-            btn_lock.icon_color = "yellow"
-        else:
-            btn_lock.icon = "lock_outline"
-            btn_lock.icon_color = "white"
-        page.update()
-
-    btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=toggle_admin)
-    btn_add_top = ft.IconButton(icon="add_circle", icon_color="white", icon_size=30, on_click=abrir_formulario_nuevo, visible=False)
-
+    # --- LISTA VISUAL ---
     def obtener_lista_visual(clave_db, color_tag, icono_defecto):
         columna = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         datos = db[clave_db]
         
-        # Botón para forzar recarga si estamos en modo nube
+        # Botón Refrescar Nube
         if USAR_NUBE:
-            def refrescar(e):
-                db[clave_db] = cargar_datos_nube(clave_db)
-                mostrar_seccion(estado["seccion_actual"])
-                page.open(ft.SnackBar(ft.Text("Datos actualizados"), bgcolor="green"))
-            columna.controls.append(ft.Container(padding=5, content=ft.TextButton("Refrescar", icon="refresh", on_click=refrescar)))
+            columna.controls.append(ft.TextButton("Sincronizar Nube", icon="cloud_sync", on_click=lambda e: [db.update({k: cargar_datos_nube(k) for k in db}), mostrar_seccion(estado["seccion_actual"])]))
 
         if not datos:
-            columna.controls.append(ft.Container(alignment=ft.alignment.center, padding=20, content=ft.Container(padding=30, width=320, bgcolor="#99FFFFFF", border_radius=15, content=ft.Column([ft.Icon("info", size=40, color="grey"), ft.Text("Lista vacía", color="grey"), ft.Text("Usa (+) arriba.", size=12)], horizontal_alignment="center"))))
+            columna.controls.append(ft.Container(alignment=ft.alignment.center, padding=20, content=ft.Container(padding=30, width=320, bgcolor="#99FFFFFF", border_radius=15, content=ft.Column([ft.Icon("info", size=40, color="grey"), ft.Text("Lista vacía", color="grey")], horizontal_alignment="center"))))
         else:
             for item in datos:
-                src_imagen = item.get("imagen")
-                if not src_imagen: src_imagen = IMAGEN_DEFAULT
-
-                imagen_componente = ft.Container(width=110, height=110, border_radius=ft.border_radius.only(top_left=10, bottom_left=10), clip_behavior=ft.ClipBehavior.ANTI_ALIAS, bgcolor="#EEEEEE", content=ft.Image(src=src_imagen, fit=ft.ImageFit.COVER, error_content=ft.Icon(icono_defecto, size=40, color="grey")), alignment=ft.alignment.top_left)
-                contenido_extra = ft.Container()
+                # Componentes tarjeta
+                src_img = item.get("imagen") or IMAGEN_DEFAULT
+                img = ft.Container(width=110, height=110, border_radius=ft.border_radius.only(top_left=10, bottom_left=10), bgcolor="#EEE", content=ft.Image(src=src_img, fit=ft.ImageFit.COVER, error_content=ft.Icon(icono_defecto)))
+                
+                extras = ft.Container()
                 if item.get("contenido"):
-                    contenido_extra = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), tile_padding=0, controls=[ft.Container(padding=ft.padding.only(bottom=10), content=ft.Text(item["contenido"], size=12, color="black"))])
-                link_componente = ft.Container()
+                    extras = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), tile_padding=0, controls=[ft.Container(padding=ft.padding.only(bottom=10), content=ft.Text(item["contenido"], size=12, color="black"))])
+                
+                link = ft.Container()
                 if item.get("video"):
-                    texto_boton = item["video"].replace("https://", "").replace("http://", "")
-                    if len(texto_boton) > 15: texto_boton = texto_boton[:12] + "..."
-                    link_componente = ft.TextButton(text=texto_boton, icon="link", icon_color="blue", tooltip=item["video"], on_click=lambda e, url=item["video"]: page.launch_url(url))
-                info_componente = ft.Container(expand=True, padding=10, content=ft.Column([ft.Text(item["titulo"], weight="bold", size=16, font_family="Kanit", max_lines=2, overflow=ft.TextOverflow.ELLIPSIS), ft.Text(item["desc"], size=12, color="grey", max_lines=2, overflow=ft.TextOverflow.ELLIPSIS), contenido_extra, ft.Row([ft.Container(content=ft.Text(item["tag"], size=10, color="white"), bgcolor=color_tag, padding=4, border_radius=4), ft.Container(expand=True), link_componente, ft.IconButton(icon="edit", icon_size=18, icon_color="blue", on_click=lambda e, it=item: click_editar(it)), ft.IconButton(icon="delete", icon_size=18, icon_color="red", on_click=lambda e, it=item: click_papelera(clave_db, it))], spacing=0, alignment=ft.MainAxisAlignment.END)], spacing=2))
-                tarjeta = ft.Card(elevation=3, color="white", margin=ft.margin.symmetric(horizontal=10), content=ft.Container(content=ft.Row([imagen_componente, info_componente], spacing=0, vertical_alignment=ft.CrossAxisAlignment.START)))
-                columna.controls.append(tarjeta)
+                    lbl = item["video"].replace("https://","")[:15]+"..."
+                    link = ft.TextButton(lbl, icon="link", on_click=lambda e, u=item["video"]: page.launch_url(u))
+
+                # Botón borrar llama al menú unificado
+                btn_del = ft.IconButton(icon="delete", icon_color="red", on_click=lambda e, k=clave_db, i=item: abrir_menu_borrar(k, i))
+                btn_edit = ft.IconButton(icon="edit", icon_color="blue", on_click=lambda e, i=item: click_editar(i))
+
+                info = ft.Container(expand=True, padding=10, content=ft.Column([
+                    ft.Text(item["titulo"], weight="bold", size=16),
+                    ft.Text(item["desc"], size=12, color="grey"),
+                    extras,
+                    ft.Row([ft.Container(content=ft.Text(item["tag"], size=10, color="white"), bgcolor=color_tag, padding=4, border_radius=4), ft.Container(expand=True), link, btn_edit, btn_del], spacing=0, alignment="end")
+                ], spacing=2))
+                
+                columna.controls.append(ft.Card(elevation=3, color="white", margin=ft.margin.symmetric(horizontal=10), content=ft.Container(content=ft.Row([img, info], spacing=0, vertical_alignment="start"))))
         return columna
 
     def mostrar_seccion(indice):
@@ -299,10 +323,6 @@ def main(page: ft.Page):
             contenedor_contenido.alignment = ft.alignment.center
             contenedor_contenido.content = ft.Container() 
             titulo.value = "Vegan Green"
-            if USAR_NUBE:
-                 db["recetas"] = cargar_datos_nube("recetas")
-                 db["restaurantes"] = cargar_datos_nube("restaurantes")
-                 db["productos"] = cargar_datos_nube("productos")
         else:
             contenedor_contenido.alignment = ft.alignment.top_center
             if indice == 1: contenedor_contenido.content = obtener_lista_visual("recetas", "#E65100", "restaurant")
