@@ -33,12 +33,11 @@ jobs:
         run: echo "flet" > requirements.txt
 
       - name: Fabricar APK
-        # CORRECCIÓN FINAL: Comando limpio.
-        # Flet leerá TODO (nombre, archivo main, icono) desde pyproject.toml
+        # El comando lee la configuración de pyproject.toml
         run: flet build apk -vv
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
         with:
-          name: vegan-green-app
+          name: vegan-green-apk
           path: build/apk/
