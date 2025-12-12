@@ -4,7 +4,7 @@ import json
 import urllib.request 
 
 def main(page: ft.Page):
-    # --- CONFIGURACIÓN ---
+    # --- CONFIGURACIÓN BÁSICA ---
     page.title = "Vegan Green"
     page.theme_mode = "light"
     page.padding = 0 
@@ -15,7 +15,7 @@ def main(page: ft.Page):
     FONDO_APP = "/portada.jpg" 
     IMAGEN_DEFAULT = "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
     
-    # --- FIREBASE (Pega tu URL abajo) ---
+    # --- FIREBASE ---
     FIREBASE_URL = "" 
     USAR_NUBE = bool(FIREBASE_URL)
 
@@ -45,14 +45,11 @@ def main(page: ft.Page):
         except: pass
 
     def cargar_y_sanear(key):
-        # Intentamos nube primero
         if USAR_NUBE:
             datos_nube = cargar_datos_nube(key.replace("mis_", ""))
             if datos_nube:
                 page.client_storage.set(key, datos_nube)
                 return datos_nube
-        
-        # Si falla, local
         try:
             datos = page.client_storage.get(key)
             if datos is None: return []
@@ -77,7 +74,6 @@ def main(page: ft.Page):
     estado = {"seccion_actual": 0, "admin": False, "id_editar": None} 
 
     # --- CAPAS DE FONDO (Compatibilidad total) ---
-    # Usamos Stack en vez de Container.image_src para evitar errores
     fondo_img = ft.Image(src=FONDO_APP, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#388E3C"))
     contenedor_contenido = ft.Container(expand=True, padding=10, alignment=ft.alignment.center)
     stack_principal = ft.Stack(controls=[fondo_img, contenedor_contenido], expand=True)
@@ -87,9 +83,9 @@ def main(page: ft.Page):
         if USAR_NUBE: guardar_datos_nube(clave_db, db[clave_db])
 
     # --- LÓGICA DE BORRADO ---
-    def ejecutar_borrado(clave, id_objetivo):
+    def ejecutar_borrado_final(clave, id_obj):
         lista = db[clave]
-        nueva_lista = [x for x in lista if x.get("id") != id_objetivo]
+        nueva_lista = [x for x in lista if x.get("id") != id_obj]
         
         if len(nueva_lista) < len(lista):
             db[clave] = nueva_lista
@@ -101,7 +97,6 @@ def main(page: ft.Page):
         page.update()
 
     def mostrar_mensaje(texto, color):
-        # Usamos page.open para versiones nuevas, try/except por si acaso
         try: page.open(ft.SnackBar(ft.Text(texto), bgcolor=color))
         except: pass
 
@@ -123,7 +118,7 @@ def main(page: ft.Page):
     def confirmar_borrado(clave, item):
         def si_borrar(e):
             page.close(dlg)
-            ejecutar_borrado(clave, item.get("id"))
+            ejecutar_borrado_final(clave, item.get("id"))
         dlg = ft.AlertDialog(title=ft.Text("¿Borrar?"), content=ft.Text(f"Eliminar: {item.get('titulo')}"), actions=[ft.TextButton("Cancelar", on_click=lambda e: page.close(dlg)), ft.ElevatedButton("BORRAR", on_click=si_borrar, bgcolor="red", color="white")])
         page.open(dlg)
 
@@ -222,6 +217,7 @@ def main(page: ft.Page):
     btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=toggle_admin)
     btn_add = ft.IconButton(icon="add_circle", icon_color="white", icon_size=30, on_click=abrir_formulario_nuevo, visible=False)
 
+    # --- LISTA VISUAL (SOLUCIÓN STACK) ---
     def obtener_lista(clave_db, color_tag, icono):
         col = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO, horizontal_alignment="center")
         datos = db[clave_db]
@@ -233,71 +229,79 @@ def main(page: ft.Page):
             col.controls.append(ft.Container(padding=20, content=ft.Column([ft.Icon("info", size=40, color="grey"), ft.Text("Lista vacía", color="grey")], horizontal_alignment="center")))
         else:
             for item in datos:
-                src = item.get("imagen") or IMAGEN_DEFAULT
+                # Datos del item
                 tiene_imagen = bool(item.get("imagen"))
+                src = item.get("imagen") if tiene_imagen else IMAGEN_DEFAULT
                 
-                # --- ARREGLO DE LA TARJETA (STACK) ---
-                # Usamos Stack para simular el fondo de imagen sin usar image_src
-                
-                # Elementos de la tarjeta
-                # 1. Información (Texto)
+                # Colores adaptables
                 color_texto = "white" if tiene_imagen else "black"
                 color_icono = "white" if tiene_imagen else "#388E3C"
-                bg_overlay = "#99000000" if tiene_imagen else "#FFFFFF" # Fondo oscuro si hay foto
-                
-                info_column = ft.Column([
-                    ft.Row([
-                        ft.Icon(icono, size=24, color=color_icono),
-                        ft.Text(item["titulo"], weight="bold", size=20, font_family="Kanit", color=color_texto, expand=True),
-                        ft.Container(content=ft.Text(item["tag"], size=10, color="white", weight="bold"), bgcolor=color_tag, padding=5, border_radius=5)
-                    ], alignment="spaceBetween"),
-                    ft.Text(item["desc"], size=13, color=color_texto),
-                    ft.Divider(height=10, color="white24" if tiene_imagen else "black12"),
-                ])
-                
-                # Detalles extra
-                if item.get("contenido"):
-                    info_column.controls.append(ft.ExpansionTile(
-                        title=ft.Text("Ver más", size=12, color="blue"),
-                        tile_padding=0,
-                        controls=[ft.Container(padding=ft.padding.only(bottom=10), content=ft.Text(item["contenido"], size=12, color=color_texto))]
-                    ))
+                color_desc = "#DDDDDD" if tiene_imagen else "#616161"
+                bg_overlay = "#99000000" if tiene_imagen else "#FFFFFF" # Fondo oscuro transp. si hay foto
 
-                # Botones
+                # --- CONTENIDO DE LA TARJETA ---
+                extras = ft.Container()
+                if item.get("contenido"):
+                    extras = ft.ExpansionTile(
+                        title=ft.Text("Ver más", size=12, color="blue"), 
+                        tile_padding=0, 
+                        controls=[ft.Container(padding=ft.padding.only(bottom=10), content=ft.Text(item["contenido"], size=12, color=color_texto))]
+                    )
+                
                 link_btn = ft.Container()
                 if item.get("video"):
-                    lbl = item["video"].replace("https://","")[:15]+"..."
-                    link_btn = ft.TextButton(lbl, icon="link", icon_color=color_icono, on_click=lambda e, u=item["video"]: page.launch_url(u))
-                    
+                    lbl = item["video"].replace("https://","")[:12]+"..."
+                    link_btn = ft.TextButton(lbl, icon="link", icon_color="blue", on_click=lambda e, u=item["video"]: page.launch_url(u))
+                
                 actions = ft.Row([
-                    link_btn, ft.Container(expand=True),
+                    ft.Container(content=ft.Text(item["tag"], size=10, color="white"), bgcolor=color_tag, padding=4, border_radius=4),
+                    ft.Container(expand=True), link_btn,
                     ft.IconButton("edit", icon_color=color_icono, icon_size=20, on_click=lambda e, i=item: click_editar(i)),
                     ft.IconButton("delete", icon_color="red", icon_size=20, on_click=lambda e, k=clave_db, i=item: click_papelera(k, i))
                 ], spacing=0, alignment="end")
-                info_column.controls.append(actions)
 
-                # 2. Construcción del Stack
+                info_column = ft.Column([
+                    ft.Row([
+                        ft.Icon(icono, size=24, color=color_icono),
+                        ft.Text(item["titulo"], weight="bold", size=20, font_family="Kanit", color=color_texto, expand=True)
+                    ], alignment="spaceBetween"),
+                    ft.Text(item["desc"], size=13, color=color_desc),
+                    ft.Divider(height=10, color="white24" if tiene_imagen else "black12"),
+                    extras, actions
+                ])
+
+                # --- CONSTRUCCIÓN POR CAPAS (STACK) ---
+                # Esto evita el error de image_src en Container
                 stack_card = []
-                # Capa 1: La imagen (solo si existe)
-                if tiene_imagen:
-                    stack_card.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#333333")))
                 
-                # Capa 2: Contenedor con color (transparente u opaco) y texto
-                stack_card.append(ft.Container(
-                    bgcolor=bg_overlay, 
-                    padding=15, 
-                    content=info_column,
-                    expand=True
-                ))
+                # Capa 1: Imagen de Fondo (solo si tiene)
+                if tiene_imagen:
+                    stack_card.append(
+                        ft.Image(
+                            src=src, 
+                            fit=ft.ImageFit.COVER, 
+                            opacity=1.0,
+                            expand=True
+                        )
+                    )
+                
+                # Capa 2: Contenido + Color de fondo (transparente u opaco)
+                stack_card.append(
+                    ft.Container(
+                        bgcolor=bg_overlay,
+                        padding=15,
+                        content=info_column,
+                        expand=True
+                    )
+                )
 
-                # La tarjeta contenedora con altura fija para que la foto luzca
                 tarjeta = ft.Card(
-                    elevation=5,
-                    color="white", # Color base
-                    margin=ft.margin.symmetric(horizontal=10),
-                    clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
+                    elevation=5, 
+                    color="white", 
+                    margin=ft.margin.symmetric(horizontal=10), 
+                    clip_behavior=ft.ClipBehavior.ANTI_ALIAS, 
                     content=ft.Container(
-                        height=250, # Altura fija para ver la foto bien
+                        height=300, # Altura fija para que se vea bien la foto
                         content=ft.Stack(controls=stack_card)
                     )
                 )
