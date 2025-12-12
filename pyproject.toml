@@ -1,8 +1,2 @@
-[tool.flet]
-product_name = "Vegan Green"
-org = "com.vegangreen.app"
-app_description = "App de recetas veganas"
-copyright = "Copyright (c) 2024 Vegan Green"
-
-[tool.flet.app]
-path = "main.py"
+- name: Fabricar APK
+  run: flet build apk --module-name main -vv
