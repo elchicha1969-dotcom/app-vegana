@@ -235,33 +235,50 @@ def main(page: ft.Page):
             for item in datos:
                 src = item.get("imagen") or IMAGEN_DEFAULT
                 
-                # Imagen del item (Izquierda)
-                img_box = ft.Container(width=110, height=110, border_radius=ft.border_radius.only(top_left=10, bottom_left=10), clip_behavior=ft.ClipBehavior.ANTI_ALIAS, bgcolor="#EEE", content=ft.Image(src=src, fit=ft.ImageFit.COVER, error_content=ft.Icon(icono)))
+                # Elementos de la tarjeta
+                # 1. Información (Texto)
+                info_column = ft.Column([
+                    ft.Text(item["titulo"], weight="bold", size=20, font_family="Kanit", color="white"),
+                    ft.Text(item["desc"], size=13, color="#EEEEEE"),
+                    ft.Divider(height=10, color="white24"),
+                    ft.Row([
+                         ft.Container(content=ft.Text(item["tag"], size=10, color="white"), bgcolor=color_tag, padding=4, border_radius=4),
+                         ft.Container(expand=True),
+                         ft.IconButton("edit", icon_color="white", icon_size=20, on_click=lambda e, i=item: click_editar(i)),
+                         ft.IconButton("delete", icon_color="red", icon_size=20, on_click=lambda e, k=clave_db, i=item: click_papelera(k, i))
+                    ], alignment="end")
+                ])
                 
-                # Contenido (Derecha)
-                extras = ft.Container()
+                # Detalles extra (desplegable)
                 if item.get("contenido"):
-                    extras = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), tile_padding=0, controls=[ft.Container(padding=ft.padding.only(bottom=10), content=ft.Text(item["contenido"], size=12))])
-                
-                link_btn = ft.Container()
-                if item.get("video"):
-                    lbl = item["video"].replace("https://","")[:12]+"..."
-                    link_btn = ft.TextButton(lbl, icon="link", on_click=lambda e, u=item["video"]: page.launch_url(u))
-                
-                actions = ft.Row([
-                    ft.Container(content=ft.Text(item["tag"], size=10, color="white"), bgcolor=color_tag, padding=4, border_radius=4),
-                    ft.Container(expand=True), link_btn,
-                    ft.IconButton("edit", icon_color="blue", icon_size=20, on_click=lambda e, i=item: click_editar(i)),
-                    ft.IconButton("delete", icon_color="red", icon_size=20, on_click=lambda e, k=clave_db, i=item: click_papelera(k, i))
-                ], spacing=0, alignment="end")
+                    info_column.controls.insert(2, ft.ExpansionTile(
+                        title=ft.Text("Ver más", size=12, color="white"),
+                        icon_color="white", collapsed_icon_color="white",
+                        tile_padding=0,
+                        controls=[ft.Container(padding=10, content=ft.Text(item["contenido"], size=12, color="white"))]
+                    ))
 
-                info = ft.Container(expand=True, padding=10, content=ft.Column([
-                    ft.Text(item["titulo"], weight="bold", size=16),
-                    ft.Text(item["desc"], size=12, color="grey"),
-                    extras, actions
-                ], spacing=2))
+                # 2. Imagen de fondo (Stack)
+                stack_card = []
+                # Capa 1: La imagen
+                stack_card.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#333333")))
+                # Capa 2: Velo negro para leer el texto
+                stack_card.append(ft.Container(bgcolor="#99000000", expand=True))
+                # Capa 3: El texto
+                stack_card.append(ft.Container(padding=15, content=info_column, expand=True))
 
-                tarjeta = ft.Card(elevation=3, color="white", margin=ft.margin.symmetric(horizontal=10), content=ft.Container(content=ft.Row([img_box, info], spacing=0, vertical_alignment="start")))
+                # La tarjeta contenedora
+                tarjeta = ft.Card(
+                    elevation=5,
+                    margin=ft.margin.symmetric(horizontal=10),
+                    clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
+                    content=ft.Container(
+                        # Aquí definimos la altura. Si quieres que se adapte, puedes quitar height, 
+                        # pero para imagen de fondo suele quedar mejor fija o mínima.
+                        height=220, 
+                        content=ft.Stack(controls=stack_card)
+                    )
+                )
                 col.controls.append(tarjeta)
         return col
 
