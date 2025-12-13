@@ -12,22 +12,21 @@ def main(page: ft.Page):
     page.theme = ft.Theme(color_scheme_seed="#388E3C")
 
     # --- IMAGEN ---
-    # Usamos URL de internet para evitar problemas si falta la carpeta assets
     FONDO_APP = "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=640&q=80"
     IMAGEN_DEFAULT = "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
     
-    # --- FIREBASE (Pega tu URL si la tienes, si no, déjalo vacío) ---
+    # --- FIREBASE ---
     FIREBASE_URL = "" 
     USAR_NUBE = bool(FIREBASE_URL)
 
-    # --- DATOS DE EJEMPLO (Se verán al instalar) ---
+    # --- DATOS ---
     DATOS_INICIO = {
         "recetas": [{"id": "1", "titulo": "Tarta de Higos", "desc": "Postre natural", "tag": "Dulce", "imagen": "https://images.unsplash.com/photo-1602351447937-745cb720612f?auto=format&fit=crop&w=500&q=60", "video": "", "contenido": "Ingredientes: Higos..."}],
         "restaurantes": [],
         "productos": []
     }
 
-    # --- GESTIÓN DE DATOS ---
+    # --- GESTIÓN DATOS ---
     def cargar_datos_nube(coleccion):
         if not USAR_NUBE: return []
         try:
@@ -47,19 +46,16 @@ def main(page: ft.Page):
         except: pass
 
     def cargar(key, default):
-        # 1. Nube
         if USAR_NUBE:
             nube = cargar_datos_nube(key.replace("mis_", ""))
             if nube: 
                 page.client_storage.set(key, nube)
                 return nube
-        # 2. Local
         try:
             local = page.client_storage.get(key)
             if not local:
                 page.client_storage.set(key, default)
                 return default
-            # Sanear IDs
             for i in local:
                 if "id" not in i: i["id"] = str(uuid.uuid4())
             return local
@@ -73,7 +69,7 @@ def main(page: ft.Page):
     
     estado = {"seccion": 0, "admin": False, "edit_id": None} 
 
-    # --- FONDO (STACK) ---
+    # --- FONDO ---
     fondo = ft.Image(src=FONDO_APP, fit=ft.ImageFit.COVER, opacity=1.0, expand=True)
     contenido = ft.Container(expand=True, padding=10, alignment=ft.alignment.center)
     stack_main = ft.Stack(controls=[fondo, contenido], expand=True)
@@ -119,7 +115,7 @@ def main(page: ft.Page):
     form = ft.Container(bgcolor="white", padding=20, border_radius=10, content=ft.Column([
         ft.Text("Editar/Nuevo", color="green", size=20),
         input_nombre, input_desc, input_tag, input_img, input_vid, input_cont,
-        ft.Row([ft.ElevatedButton("Cancelar", on_click=lambda e: mostrar(estado["seccion"])), ft.ElevatedButton("Guardar", on_click=guardar)])
+        ft.Row([ft.ElevatedButton("Cancelar", on_click=lambda e: mostrar(estado["seccion"])), ft.ElevatedButton("Guardar", on_click=guardar_item)])
     ]))
 
     def abrir_form(item=None):
@@ -138,6 +134,35 @@ def main(page: ft.Page):
         btn_add.visible = False
         page.update()
 
+    # --- DIÁLOGO PIN SEGURO ---
+    campo_pin = ft.TextField(label="Contraseña", password=True, text_align="center", autofocus=True)
+    
+    def confirmar_pin(e, callback):
+        if campo_pin.value == "1969":
+            estado["admin"] = True
+            btn_lock.icon = "lock_open"
+            page.close(dlg_pin)
+            callback()
+            page.update()
+        else:
+            campo_pin.error_text = "Incorrecto"
+            campo_pin.update()
+
+    dlg_pin = ft.AlertDialog(
+        title=ft.Text("Modo Administrador"),
+        # CAMBIO: Texto genérico sin revelar el número
+        content=ft.Column([ft.Text("Introduce el código de acceso:"), campo_pin], height=100, tight=True)
+    )
+
+    def check_admin(callback):
+        if estado["admin"]:
+            callback()
+        else:
+            campo_pin.value = ""
+            campo_pin.error_text = None
+            dlg_pin.actions = [ft.ElevatedButton("Entrar", on_click=lambda e: confirmar_pin(e, callback))]
+            page.open(dlg_pin)
+
     def get_list(key, tag_color, icon):
         col = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
         for item in db[key]:
@@ -147,8 +172,8 @@ def main(page: ft.Page):
                 ft.Text(item["titulo"], weight="bold", size=16),
                 ft.Text(item["desc"], size=12, color="grey"),
                 ft.Row([
-                    ft.IconButton("edit", on_click=lambda e, i=item: abrir_form(i)),
-                    ft.IconButton("delete", on_click=lambda e, k=key, i=item["id"]: borrar(k, i))
+                    ft.IconButton("edit", on_click=lambda e, i=item: check_admin(lambda: abrir_form(i))),
+                    ft.IconButton("delete", on_click=lambda e, k=key, i=item["id"]: check_admin(lambda: borrar(k, i)))
                 ])
             ])
             col.controls.append(ft.Card(content=ft.Container(padding=10, content=ft.Row([img, ft.Container(content=info, expand=True)]))))
@@ -169,7 +194,9 @@ def main(page: ft.Page):
             contenido.content = get_list(key, "green", "star")
         page.update()
 
-    btn_add = ft.FloatingActionButton(icon="add", on_click=lambda e: abrir_form(None))
+    btn_add = ft.FloatingActionButton(icon="add", on_click=lambda e: check_admin(lambda: abrir_form(None)))
+    btn_lock = ft.IconButton(icon="lock", on_click=lambda e: check_admin(lambda: page.open(ft.SnackBar(ft.Text("Admin activo")))))
+
     nav = ft.NavigationBar(on_change=lambda e: mostrar(e.control.selected_index), destinations=[
         ft.NavigationDestination(icon="home", label="Inicio"),
         ft.NavigationDestination(icon="book", label="Recetas"),
@@ -178,7 +205,10 @@ def main(page: ft.Page):
     ])
 
     page.add(ft.Column([
-        ft.Container(padding=10, bgcolor="green", content=ft.Text("Vegan Green", color="white", size=20)),
+        ft.Container(padding=10, bgcolor="green", content=ft.Row([
+            ft.Text("Vegan Green", color="white", size=20),
+            btn_lock
+        ], alignment="spaceBetween")),
         ft.Container(content=stack_main, expand=True),
         nav
     ], expand=True))
