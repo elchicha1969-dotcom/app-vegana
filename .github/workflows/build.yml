@@ -1,42 +1,8 @@
-name: Crear APK Vegan Green
+[tool.flet]
+product_name = "Vegan Green"
+org = "com.vegangreen.app"
+app_description = "App de recetas veganas"
+copyright = "Copyright (c) 2025 Vegan Green"
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
-  android:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          
-      - name: Instalar dependencias
-        run: |
-          pip install --upgrade pip
-          pip install flet
-          
-      - name: Crear requirements
-        run: echo "flet" > requirements.txt
-
-      - name: Verificar archivos (Debug)
-        run: ls -la
-        
-      - name: Fabricar APK
-        # AL HABER BORRADO pyproject.toml, ESTE COMANDO YA FUNCIONARÁ BIEN:
-        run: flet build apk --module-name main --product-name "Vegan Green" --org "com.vegangreen.app" -vv
-        
-      - name: Subir APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: vegan-green-app
-          path: build/apk/
+[tool.flet.app]
+path = "main.py"
