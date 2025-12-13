@@ -1,26 +1,17 @@
 import flet as ft
 import uuid
 import json
-import urllib.request
-import os
-import sys
-
-# --- DETECTOR DE ARCHIVOS CONFLICTIVOS ---
-# Esto te avisará si tienes un archivo que está rompiendo la app
-if os.path.exists("flet.py"):
-    print("\n⚠️ ¡ATENCIÓN! TIENES UN ARCHIVO LLAMADO 'flet.py' ⚠️")
-    print("Este archivo confunde a Python. Por favor, cámbiale el nombre o bórralo.")
-    print("Luego vuelve a ejecutar este programa.\n")
+import urllib.request 
 
 def main(page: ft.Page):
-    # --- CONFIGURACIÓN ---
+    # --- CONFIGURACIÓN BÁSICA ---
     page.title = "Vegan Green"
     page.theme_mode = "light"
     page.padding = 0 
     page.bgcolor = "#202020" 
     page.theme = ft.Theme(color_scheme_seed="#388E3C")
 
-    # --- IMÁGENES ---
+    # --- IMAGEN DE FONDO ---
     FONDO_APP = "/portada.jpg" 
     IMAGEN_DEFAULT = "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
     
@@ -92,14 +83,14 @@ def main(page: ft.Page):
         if USAR_NUBE: guardar_datos_nube(clave_db, db[clave_db])
 
     # --- LÓGICA DE BORRADO ---
-    def ejecutar_borrado(clave, id_objetivo):
+    def ejecutar_borrado_final(clave, id_obj):
         lista = db[clave]
-        nueva_lista = [x for x in lista if x.get("id") != id_objetivo]
+        nueva_lista = [x for x in lista if x.get("id") != id_obj]
         
         if len(nueva_lista) < len(lista):
             db[clave] = nueva_lista
             sincronizar_cambios(clave)
-            mostrar_mensaje("¡Eliminado!", "green")
+            mostrar_mensaje("¡Eliminado correctamente!", "green")
             mostrar_seccion(estado["seccion_actual"])
         else:
             mostrar_mensaje("Error: No encontrado", "red")
@@ -127,7 +118,7 @@ def main(page: ft.Page):
     def confirmar_borrado(clave, item):
         def si_borrar(e):
             page.close(dlg)
-            ejecutar_borrado(clave, item.get("id"))
+            ejecutar_borrado_final(clave, item.get("id"))
         dlg = ft.AlertDialog(title=ft.Text("¿Borrar?"), content=ft.Text(f"Eliminar: {item.get('titulo')}"), actions=[ft.TextButton("Cancelar", on_click=lambda e: page.close(dlg)), ft.ElevatedButton("BORRAR", on_click=si_borrar, bgcolor="red", color="white")])
         page.open(dlg)
 
@@ -149,10 +140,10 @@ def main(page: ft.Page):
     input_cont = ft.TextField(label="Detalles", multiline=True, min_lines=5, bgcolor="#F5F5F5", color="black")
 
     def ajustar_etiquetas():
-        # Usamos texto simple ("map", "description") para evitar errores de atributos
+        # [CORRECCIÓN]: Usamos strings "map" y "description"
         if estado["seccion_actual"] == 2:
             input_desc.label = "Lugar / Dirección"
-            input_desc.icon = "map"
+            input_desc.icon = "map" 
         else:
             input_desc.label = "Descripción"
             input_desc.icon = "description"
