@@ -24,9 +24,12 @@ jobs:
           
       - name: Crear requirements
         run: echo "flet" > requirements.txt
+
+      - name: Ver archivos (Debug)
+        run: ls -R
         
       - name: Construir APK
-        # AL HABER BORRADO pyproject.toml, AHORA SÍ PODEMOS USAR ESTE COMANDO:
+        # AL HABER BORRADO pyproject.toml, ESTE COMANDO YA FUNCIONARÁ:
         run: flet build apk --module-name main --product-name "Vegan Green" --org "com.vegangreen.app" -vv
         
       - name: Subir APK
