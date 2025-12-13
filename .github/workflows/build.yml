@@ -1,4 +1,4 @@
-name: Construir App
+name: Crear APK Vegan Green
 
 on:
   push:
@@ -27,10 +27,13 @@ jobs:
           
       - name: Crear requirements
         run: echo "flet" > requirements.txt
+
+      - name: Verificar archivos (Debug)
+        run: ls -la
         
-      - name: Construir APK
-        # ESTA ES LA LÍNEA CLAVE: Fíjate que es corta y no tiene --product-name
-        run: flet build apk -vv
+      - name: Fabricar APK
+        # AL HABER BORRADO pyproject.toml, ESTE COMANDO YA FUNCIONARÁ BIEN:
+        run: flet build apk --module-name main --product-name "Vegan Green" --org "com.vegangreen.app" -vv
         
       - name: Subir APK
         uses: actions/upload-artifact@v4
