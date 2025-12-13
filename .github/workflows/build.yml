@@ -1,9 +1,6 @@
 name: Construir App
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 jobs:
   android:
@@ -29,8 +26,8 @@ jobs:
         run: echo "flet" > requirements.txt
         
       - name: Construir APK
-        # Este comando busca el archivo pyproject.toml automáticamente
-        run: flet build apk -vv
+        # AL HABER BORRADO pyproject.toml, AHORA SÍ PODEMOS USAR ESTE COMANDO:
+        run: flet build apk --module-name main --product-name "Vegan Green" --org "com.vegangreen.app" -vv
         
       - name: Subir APK
         uses: actions/upload-artifact@v4
