@@ -4,6 +4,5 @@ org = "com.vegangreen.app"
 app_description = "App de recetas veganas"
 copyright = "Copyright (c) 2025 Vegan Green"
 
-# --- PEGA ESTO AL FINAL ---
 [tool.flet.app]
 path = "main.py"
