@@ -27,15 +27,10 @@ jobs:
           
       - name: Crear requirements
         run: echo "flet" > requirements.txt
-
-      - name: Ver archivos (Diagnostico)
-        run: ls -la
         
       - name: Construir APK
-        # USAMOS ESTA COMBINACIÓN GANADORA:
-        # --module-name main: Para decirle dónde empezar (arregla el error 'not found')
-        # El resto (nombre, icono) lo lee de tu pyproject.toml
-        run: flet build apk --module-name main -vv
+        # Este comando busca el archivo pyproject.toml automáticamente
+        run: flet build apk -vv
         
       - name: Subir APK
         uses: actions/upload-artifact@v4
