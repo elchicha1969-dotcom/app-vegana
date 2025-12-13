@@ -1,1 +1,8 @@
-on: [push, workflow_dispatch]
+[tool.flet]
+product_name = "Vegan Green"
+org = "com.vegangreen.app"
+app_description = "App de recetas veganas"
+copyright = "Copyright (c) 2025 Vegan Green"
+
+[tool.flet.app]
+path = "main.py"
