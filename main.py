@@ -140,7 +140,6 @@ def main(page: ft.Page):
     input_cont = ft.TextField(label="Detalles", multiline=True, min_lines=5, bgcolor="#F5F5F5", color="black")
 
     def ajustar_etiquetas():
-        # [CORRECCIÓN]: Usamos strings "map" y "description"
         if estado["seccion_actual"] == 2:
             input_desc.label = "Lugar / Dirección"
             input_desc.icon = "map" 
@@ -228,7 +227,7 @@ def main(page: ft.Page):
     btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=toggle_admin)
     btn_add = ft.IconButton(icon="add_circle", icon_color="white", icon_size=30, on_click=abrir_formulario_nuevo, visible=False)
 
-    # --- LISTA VISUAL (DISEÑO STACK) ---
+    # --- LISTA VISUAL ---
     def obtener_lista(clave_db, color_tag, icono):
         col = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO, horizontal_alignment="center")
         datos = db[clave_db]
@@ -241,48 +240,47 @@ def main(page: ft.Page):
         else:
             for item in datos:
                 src = item.get("imagen") or IMAGEN_DEFAULT
-                tiene_imagen = bool(item.get("imagen"))
                 
-                # Colores adaptables
-                color_texto = "white" if tiene_imagen else "black"
-                color_icono = "white" if tiene_imagen else "#388E3C"
-                color_desc = "#DDDDDD" if tiene_imagen else "#616161"
-                bg_overlay = "#99000000" if tiene_imagen else "#FFFFFF"
+                # Contenedor de imagen cuadrado
+                imagen_componente = ft.Container(
+                    width=110, 
+                    height=110,
+                    border_radius=ft.border_radius.only(top_left=10, bottom_left=10),
+                    clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
+                    bgcolor="#EEEEEE", 
+                    content=ft.Image(
+                        src=src, 
+                        # CAMBIO: Usamos FILL para rellenar exactamente el cuadro
+                        fit=ft.ImageFit.FILL, 
+                        error_content=ft.Icon(icono, size=40, color="grey")
+                    ),
+                    alignment=ft.alignment.top_left 
+                )
 
                 # Contenido
                 extras = ft.Container()
                 if item.get("contenido"):
-                    # Usamos tile_padding=0 directamente (evitamos ft.padding.zero si da error)
-                    extras = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), tile_padding=0, controls=[ft.Container(padding=ft.padding.only(bottom=10), content=ft.Text(item["contenido"], size=12, color=color_texto))])
+                    extras = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), tile_padding=0, controls=[ft.Container(padding=ft.padding.only(bottom=10), content=ft.Text(item["contenido"], size=12, color="black"))])
                 
                 link_btn = ft.Container()
                 if item.get("video"):
                     lbl = item["video"].replace("https://","")[:15]+"..."
-                    link_btn = ft.TextButton(lbl, icon="link", icon_color=color_icono, on_click=lambda e, u=item["video"]: page.launch_url(u))
-                    link_btn.content.style = ft.ButtonStyle(color=color_texto)
-                
+                    link_btn = ft.TextButton(lbl, icon="link", icon_color="blue", on_click=lambda e, u=item["video"]: page.launch_url(u))
+                    
                 actions = ft.Row([
                     ft.Container(content=ft.Text(item["tag"], size=10, color="white"), bgcolor=color_tag, padding=4, border_radius=4),
                     ft.Container(expand=True), link_btn,
-                    ft.IconButton("edit", icon_color=color_icono, icon_size=20, on_click=lambda e, i=item: click_editar(i)),
+                    ft.IconButton("edit", icon_color="blue", icon_size=20, on_click=lambda e, i=item: click_editar(i)),
                     ft.IconButton("delete", icon_color="red", icon_size=20, on_click=lambda e, k=clave_db, i=item: click_papelera(k, i))
                 ], spacing=0, alignment="end")
 
-                info = ft.Column([
-                    ft.Row([ft.Icon(icono, size=24, color=color_icono), ft.Text(item["titulo"], weight="bold", size=20, font_family="Kanit", color=color_texto, expand=True)], alignment="spaceBetween"),
-                    ft.Text(item["desc"], size=13, color=color_desc),
-                    ft.Divider(height=10, color="white24" if tiene_imagen else "black12"),
+                info = ft.Container(expand=True, padding=10, content=ft.Column([
+                    ft.Text(item["titulo"], weight="bold", size=16),
+                    ft.Text(item["desc"], size=12, color="grey"),
                     extras, actions
-                ])
+                ], spacing=2))
 
-                # --- STACK (Fondo + Contenido) ---
-                stack_card = []
-                if tiene_imagen:
-                    stack_card.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#333333")))
-                
-                stack_card.append(ft.Container(bgcolor=bg_overlay, padding=15, content=info, expand=True))
-
-                tarjeta = ft.Card(elevation=5, color="white", margin=ft.margin.symmetric(horizontal=10), clip_behavior=ft.ClipBehavior.ANTI_ALIAS, content=ft.Container(height=300, content=ft.Stack(controls=stack_card)))
+                tarjeta = ft.Card(elevation=3, color="white", margin=ft.margin.symmetric(horizontal=10), content=ft.Container(content=ft.Row([imagen_componente, info], spacing=0, vertical_alignment="start")))
                 col.controls.append(tarjeta)
         return col
 
