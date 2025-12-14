@@ -1,78 +1,83 @@
 import flet as ft
 import uuid
 import json
-import urllib.request 
 
 def main(page: ft.Page):
-    # --- CONFIGURACIÓN ---
+    # --- 1. CONFIGURACIÓN ---
     page.title = "Vegan Green"
     page.theme_mode = "light"
     page.padding = 0 
     page.bgcolor = "#202020" 
     page.theme = ft.Theme(color_scheme_seed="#388E3C")
 
-    # --- IMAGEN ---
+    # --- 2. IMÁGENES ---
     FONDO_APP = "/portada.jpg"
     IMAGEN_DEFAULT = "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
     
-    # --- FIREBASE ---
-    FIREBASE_URL = "" 
-    USAR_NUBE = bool(FIREBASE_URL)
+    # --- 3. DATOS DE FÁBRICA (ESTO ES LO QUE VERÁN TODOS) ---
+    DATOS_INICIALES = {
+        "recetas": [
+            {
+                "id": "fija-1", 
+                "titulo": "Tarta de Higos", 
+                "desc": "Postre crudivegano dulce.", 
+                "tag": "Postre", 
+                "imagen": "https://images.unsplash.com/photo-1602351447937-745cb720612f?auto=format&fit=crop&w=500&q=60", 
+                "video": "", 
+                "contenido": "Ingredientes: Higos frescos, harina de almendra..."
+            }
+        ],
+        "restaurantes": [
+            {
+                "id": "fija-2",
+                "titulo": "QuickVeg",
+                "desc": "Comida rápida saludable.",
+                "tag": "Centro",
+                "imagen": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=60",
+                "video": "",
+                "contenido": "Hamburguesas de lentejas y batidos."
+            }
+        ],
+        "productos": []
+    }
 
-    # --- GESTIÓN DATOS ---
-    def cargar_nube(coleccion):
-        if not USAR_NUBE: return []
+    # --- 4. GESTIÓN DE DATOS ---
+    def cargar_datos(key, default):
         try:
-            with urllib.request.urlopen(f"{FIREBASE_URL}/{coleccion}.json") as r:
-                if r.status == 200:
-                    d = json.loads(r.read().decode())
-                    if d: return list(d.values()) if isinstance(d, dict) else [x for x in d if x]
-            return []
-        except: return []
-
-    def guardar_nube(coleccion, datos):
-        if not USAR_NUBE: return
-        try:
-            req = urllib.request.Request(f"{FIREBASE_URL}/{coleccion}.json", data=json.dumps(datos).encode(), method='PUT')
-            req.add_header('Content-Type', 'application/json')
-            with urllib.request.urlopen(req): pass
-        except: pass
-
-    def cargar(key):
-        if USAR_NUBE:
-            nube = cargar_nube(key.replace("mis_", ""))
-            if nube: 
-                page.client_storage.set(key, nube)
-                return nube
-        try:
+            # Intentamos leer la memoria del móvil
             local = page.client_storage.get(key)
-            if not local: return []
+            
+            # Si está vacía (primera vez que se instala), usamos los DATOS_INICIALES
+            if not local:
+                page.client_storage.set(key, default)
+                return default
+            
+            # Saneamiento de IDs por seguridad
             for i in local:
                 if isinstance(i, dict) and "id" not in i: i["id"] = str(uuid.uuid4())
             return local
-        except: return []
+        except: return default
 
     db = {
-        "recetas": cargar("mis_recetas"),
-        "restaurantes": cargar("mis_restaurantes"),
-        "productos": cargar("mis_productos")
+        "recetas": cargar_datos("mis_recetas", DATOS_INICIALES["recetas"]),
+        "restaurantes": cargar_datos("mis_restaurantes", DATOS_INICIALES["restaurantes"]),
+        "productos": cargar_datos("mis_productos", DATOS_INICIALES["productos"])
     }
     
     estado = {"seccion": 0, "admin": False, "edit_id": None} 
 
-    # --- FONDO ---
+    # --- 5. INTERFAZ ---
     fondo_img = ft.Image(src=FONDO_APP, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#388E3C"))
     contenedor = ft.Container(expand=True, padding=10, alignment=ft.alignment.center)
     stack_main = ft.Stack(controls=[fondo_img, contenedor], expand=True)
 
-    def sync(key):
+    def guardar_en_movil(key):
         page.client_storage.set(f"mis_{key}", db[key])
-        if USAR_NUBE: guardar_nube(key, db[key])
 
-    # --- LÓGICA ---
+    # --- 6. BORRADO ---
     def borrar(key, id_obj):
         db[key] = [x for x in db[key] if x.get("id") != id_obj]
-        sync(key)
+        guardar_en_movil(key)
         try: page.open(ft.SnackBar(ft.Text("Eliminado"), bgcolor="green"))
         except: pass
         mostrar(estado["seccion"])
@@ -92,12 +97,12 @@ def main(page: ft.Page):
             data["id"] = str(uuid.uuid4())
             db[key].append(data)
         
-        sync(key)
+        guardar_en_movil(key)
         try: page.open(ft.SnackBar(ft.Text("Guardado"), bgcolor="green"))
         except: pass
         mostrar(estado["seccion"])
 
-    # --- FORMULARIO ---
+    # --- 7. FORMULARIO ---
     txt_titulo = ft.Text("Nuevo", size=20, weight="bold", color="green")
     input_nombre = ft.TextField(label="Nombre", bgcolor="white", color="black")
     input_desc = ft.TextField(label="Descripción", bgcolor="white", color="black")
@@ -105,18 +110,6 @@ def main(page: ft.Page):
     input_img = ft.TextField(label="URL Imagen", bgcolor="white", color="black")
     input_vid = ft.TextField(label="URL Enlace", bgcolor="white", color="black")
     input_cont = ft.TextField(label="Detalles", multiline=True, bgcolor="white", color="black")
-    
-    def archivo_sel(e: ft.FilePickerResultEvent):
-        if e.files: input_img.value = e.files[0].path; input_img.update()
-    picker = ft.FilePicker(on_result=archivo_sel)
-    page.overlay.append(picker)
-
-    vista_form = ft.Container(bgcolor="white", padding=20, border_radius=10, content=ft.Column([
-        txt_titulo, input_nombre, input_desc, input_tag,
-        ft.Row([input_img, ft.IconButton("photo_library", on_click=lambda _: picker.pick_files())]),
-        input_vid, input_cont,
-        ft.Row([ft.ElevatedButton("Cancelar", on_click=lambda e: mostrar(estado["seccion"])), ft.ElevatedButton("Guardar", on_click=guardar_item)])
-    ], scroll="auto"))
 
     def abrir_form(item=None):
         estado["edit_id"] = item["id"] if item else None
@@ -128,7 +121,6 @@ def main(page: ft.Page):
         input_vid.value = item["video"] if item else ""
         input_cont.value = item["contenido"] if item else ""
         
-        # AJUSTE SEGURO DE ETIQUETAS (Sin .update() prematuro)
         if estado["seccion"] == 2:
             input_desc.label = "Lugar"
             input_desc.icon = "map"
@@ -143,7 +135,19 @@ def main(page: ft.Page):
         btn_add.visible = False
         page.update()
 
-    # --- SEGURIDAD ---
+    def archivo_sel(e: ft.FilePickerResultEvent):
+        if e.files: input_img.value = e.files[0].path; input_img.update()
+    picker = ft.FilePicker(on_result=archivo_sel)
+    page.overlay.append(picker)
+
+    vista_form = ft.Container(bgcolor="white", padding=20, border_radius=10, content=ft.Column([
+        txt_titulo, input_nombre, input_desc, input_tag,
+        ft.Row([input_img, ft.IconButton("photo_library", on_click=lambda _: picker.pick_files())]),
+        input_vid, input_cont,
+        ft.Row([ft.ElevatedButton("Cancelar", on_click=lambda e: mostrar(estado["seccion"])), ft.ElevatedButton("Guardar", on_click=guardar_item)])
+    ], scroll="auto"))
+
+    # --- 8. SEGURIDAD ---
     input_pin = ft.TextField(label="PIN", password=True, text_align="center")
     def validar_pin(e, callback):
         if input_pin.value == "1969":
@@ -181,14 +185,11 @@ def main(page: ft.Page):
         page.update()
 
     btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=toggle_admin)
-    btn_add = ft.IconButton(icon="add_circle", icon_color="white", icon_size=30, on_click=lambda e: check_admin(lambda: abrir_form(None)), visible=False)
+    btn_add = ft.IconButton(icon="add_circle", icon_color="white", icon_size=30, on_click=abrir_form, visible=False)
 
-    # --- LISTAS ---
+    # --- 9. LISTAS (DISEÑO STACK) ---
     def get_lista(key, color, icon):
         col = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
-        if USAR_NUBE:
-            col.controls.append(ft.TextButton("Sincronizar Nube", icon="cloud_sync", on_click=lambda e: [db.update({k: cargar_nube(k) for k in db}), mostrar(estado["seccion"])]))
-
         for item in db[key]:
             src = item.get("imagen") or IMAGEN_DEFAULT
             tiene_foto = bool(item.get("imagen"))
@@ -205,7 +206,7 @@ def main(page: ft.Page):
 
             extras = ft.Container()
             if item.get("contenido"):
-                extras = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), tile_padding=0, controls=[ft.Container(padding=10, content=ft.Text(item["contenido"], size=12, color=c_txt))])
+                extras = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), controls=[ft.Container(padding=10, content=ft.Text(item["contenido"], size=12, color=c_txt))])
 
             btns = ft.Row([
                 link, ft.Container(expand=True),
@@ -214,11 +215,12 @@ def main(page: ft.Page):
             ], alignment="end")
 
             info = ft.Column([
-                ft.Row([ft.Icon(icon, color="green"), ft.Text(item["titulo"], weight="bold", size=18, color=c_txt, expand=True)]),
+                ft.Row([ft.Icon(icon, color=c_ico), ft.Text(item["titulo"], weight="bold", size=18, color=c_txt, expand=True)]),
                 ft.Text(item["desc"], size=12, color=c_txt),
                 extras, btns
             ])
             
+            # STACK PARA FONDO
             stack = []
             if tiene_foto: stack.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True))
             stack.append(ft.Container(bgcolor=bg, padding=10, content=info, expand=True))
@@ -226,6 +228,7 @@ def main(page: ft.Page):
             col.controls.append(ft.Card(elevation=5, content=ft.Container(height=280, content=ft.Stack(controls=stack))))
         return col
 
+    # --- 10. NAVEGACIÓN ---
     def mostrar(idx):
         estado["seccion"] = idx
         btn_add.visible = (idx != 0)
@@ -242,16 +245,23 @@ def main(page: ft.Page):
             contenedor.content = get_lista(key, "green", "star")
         page.update()
 
+    titulo = ft.Text("Vegan Green", color="white", size=20, weight="bold")
     nav = ft.NavigationBar(on_change=lambda e: mostrar(e.control.selected_index), destinations=[
         ft.NavigationDestination(icon="home", label="Inicio"),
         ft.NavigationDestination(icon="book", label="Recetas"),
         ft.NavigationDestination(icon="store", label="Sitios"),
-        ft.NavigationDestination(icon="shopping_bag", label="Productos")
+        ft.NavigationBarDestination(icon="shopping_bag", label="Productos")
     ])
-    titulo = ft.Text("Vegan Green", color="white", size=20, weight="bold")
-    app_bar = ft.Container(padding=10, bgcolor="green", content=ft.Row([ft.Row([ft.Icon("eco", color="white"), titulo]), ft.Row([btn_add, btn_lock])], alignment="spaceBetween"))
+
+    page.add(ft.Column([
+        ft.Container(padding=10, bgcolor="green", content=ft.Row([
+            ft.Row([ft.Icon("eco", color="white"), titulo]),
+            ft.Row([btn_add, btn_lock])
+        ], alignment="spaceBetween")),
+        ft.Container(content=stack_main, expand=True),
+        nav
+    ], expand=True))
     
-    page.add(ft.Column([app_bar, ft.Container(content=stack_main, expand=True), nav], expand=True))
     mostrar(0)
 
 ft.app(target=main, assets_dir="assets")
