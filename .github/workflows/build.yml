@@ -26,9 +26,8 @@ jobs:
         run: echo "flet" > requirements.txt
         
       - name: Construir APK
-        # COMANDO CORREGIDO:
-        # Quitamos --product-name y --org porque ya están en tu archivo pyproject.toml
-        # Solo dejamos -vv para ver detalles
+        # COMANDO MAESTRO: Sin argumentos extra.
+        # Flet leerá automáticamente el nombre y configuración de 'pyproject.toml'
         run: flet build apk -vv
         
       - name: Subir APK
