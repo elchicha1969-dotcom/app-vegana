@@ -12,18 +12,22 @@ def main(page: ft.Page):
     page.theme = ft.Theme(color_scheme_seed="#388E3C")
 
     # --- 2. IMÁGENES ---
+    # Usamos ruta local. Asegúrate de tener la carpeta 'assets' con 'portada.jpg'
     FONDO_APP = "/portada.jpg"
     IMAGEN_DEFAULT = "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
     
-    # PEGA TU URL DE FIREBASE AQUÍ:
+    # --- 3. TU NUBE FIREBASE ---
+    # ¡PEGA TU URL AQUÍ! (Ej: "https://tu-proyecto.firebaseio.com")
     FIREBASE_URL = "" 
+    
     USAR_NUBE = bool(FIREBASE_URL)
 
-    # --- 3. GESTIÓN DATOS ---
+    # --- 4. GESTIÓN DE DATOS ---
     def cargar_nube(coleccion):
         if not USAR_NUBE: return []
         try:
-            with urllib.request.urlopen(f"{FIREBASE_URL}/{coleccion}.json") as r:
+            url = f"{FIREBASE_URL}/{coleccion}.json"
+            with urllib.request.urlopen(url) as r:
                 if r.status == 200:
                     d = json.loads(r.read().decode())
                     if d: return list(d.values()) if isinstance(d, dict) else [x for x in d if x]
@@ -60,7 +64,7 @@ def main(page: ft.Page):
     
     estado = {"seccion": 0, "admin": False, "edit_id": None} 
 
-    # --- 4. INTERFAZ ---
+    # --- 5. INTERFAZ (FONDO SEGURO) ---
     fondo_img = ft.Image(src=FONDO_APP, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#388E3C"))
     contenedor = ft.Container(expand=True, padding=10, alignment=ft.alignment.center)
     stack_main = ft.Stack(controls=[fondo_img, contenedor], expand=True)
@@ -69,7 +73,7 @@ def main(page: ft.Page):
         page.client_storage.set(f"mis_{key}", db[key])
         if USAR_NUBE: guardar_nube(key, db[key])
 
-    # --- 5. BORRADO ---
+    # --- 6. BORRADO Y GUARDADO ---
     def borrar(key, id_obj):
         db[key] = [x for x in db[key] if x.get("id") != id_obj]
         sync(key)
@@ -97,7 +101,7 @@ def main(page: ft.Page):
         except: pass
         mostrar(estado["seccion"])
 
-    # --- 6. FORMULARIO ---
+    # --- 7. FORMULARIO ---
     txt_titulo = ft.Text("Nuevo", size=20, weight="bold", color="green")
     input_nombre = ft.TextField(label="Nombre", bgcolor="white", color="black")
     input_desc = ft.TextField(label="Descripción", bgcolor="white", color="black")
@@ -111,7 +115,7 @@ def main(page: ft.Page):
     picker = ft.FilePicker(on_result=archivo_sel)
     page.overlay.append(picker)
 
-    form_view = ft.Container(bgcolor="white", padding=20, border_radius=10, content=ft.Column([
+    vista_form = ft.Container(bgcolor="white", padding=20, border_radius=10, content=ft.Column([
         txt_titulo, input_nombre, input_desc, input_tag,
         ft.Row([input_img, ft.IconButton("photo_library", on_click=lambda _: picker.pick_files())]),
         input_vid, input_cont,
@@ -128,6 +132,7 @@ def main(page: ft.Page):
         input_vid.value = item["video"] if item else ""
         input_cont.value = item["contenido"] if item else ""
         
+        # Iconos seguros (strings)
         if estado["seccion"] == 2:
             input_desc.label = "Lugar"
             input_desc.icon = "map"
@@ -138,80 +143,94 @@ def main(page: ft.Page):
         fondo_img.visible = False
         contenedor.bgcolor = "#F5F5F5"
         contenedor.alignment = ft.alignment.top_center
-        contenedor.content = form_view
+        contenedor.content = vista_form
         btn_add.visible = False
         page.update()
 
-    # --- 7. SEGURIDAD ---
+    # --- 8. SEGURIDAD ---
     input_pin = ft.TextField(label="PIN", password=True, text_align="center")
-    def validar(e, cb):
+    def validar_pin(e, callback):
         if input_pin.value == "1969":
             estado["admin"] = True
+            actualizar_candado()
             page.close(dlg_auth)
-            btn_lock.icon = "lock_open"
-            btn_lock.icon_color = "yellow"
-            cb()
-            page.update()
-        else: input_pin.error_text = "Mal"; page.update()
-            
-    dlg_auth = ft.AlertDialog(title=ft.Text("Admin"), content=input_pin, actions=[ft.ElevatedButton("OK", on_click=None)])
+            callback()
+        else: input_pin.error_text = "Mal"
+        page.update()
+
+    dlg_auth = ft.AlertDialog(title=ft.Text("Admin"), content=input_pin, actions=[ft.ElevatedButton("Entrar", on_click=None)])
     
-    def check_admin(cb):
-        if estado["admin"]: cb()
+    def check_admin(callback):
+        if estado["admin"]: callback()
         else:
             input_pin.value = ""
             input_pin.error_text = None
-            dlg_auth.actions[0].on_click = lambda e: validar(e, cb)
+            dlg_auth.actions[0].on_click = lambda e: validar_pin(e, callback)
             page.open(dlg_auth)
 
-    def confirmar_del(k, i):
-        def si(e): page.close(dlg_del); borrar(k, i["id"])
+    def confirmar_borrado(key, item):
+        def si(e): page.close(dlg_del); borrar(key, item["id"])
         dlg_del = ft.AlertDialog(title=ft.Text("¿Borrar?"), actions=[ft.TextButton("No", on_click=lambda e: page.close(dlg_del)), ft.ElevatedButton("Si", on_click=si)])
         page.open(dlg_del)
 
-    # Listas
-    def get_lista(k, col, ico):
-        c = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
-        
-        # Botón Refrescar
-        if USAR_NUBE:
-             c.controls.append(ft.TextButton("Refrescar", icon="refresh", on_click=lambda e: [db.update({k: cargar_nube(k) for k in db}), mostrar(estado["seccion"])]))
+    def toggle_admin(e):
+        if estado["admin"]:
+            estado["admin"] = False
+            actualizar_candado()
+        else: check_admin(lambda: None)
+    
+    def actualizar_candado():
+        btn_lock.icon = "lock_open" if estado["admin"] else "lock_outline"
+        btn_lock.icon_color = "yellow" if estado["admin"] else "white"
+        page.update()
 
-        for item in db[k]:
+    btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=toggle_admin)
+    btn_add = ft.IconButton(icon="add_circle", icon_color="white", icon_size=30, on_click=abrir_form, visible=False)
+
+    # --- 9. LISTAS (DISEÑO STACK) ---
+    def get_lista(key, color, icon):
+        col = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
+        for item in db[key]:
             src = item.get("imagen") or IMAGEN_DEFAULT
             tiene_foto = bool(item.get("imagen"))
             
+            # Colores
             c_txt = "white" if tiene_foto else "black"
             c_ico = "white" if tiene_foto else "green"
             bg = "#99000000" if tiene_foto else "white"
-
-            extra = ft.Container()
-            if item.get("contenido"):
-                extra = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), controls=[ft.Container(padding=10, content=ft.Text(item["contenido"], size=12, color=c_txt))])
-
-            lnk = ft.Container()
+            
+            # Elementos
+            link = ft.Container()
             if item.get("video"):
-                lnk = ft.TextButton("Enlace", icon="link", on_click=lambda e, u=item["video"]: page.launch_url(u))
+                 lbl = item["video"].replace("https://","")[:12]+"..."
+                 link = ft.TextButton(lbl, icon="link", icon_color="blue", on_click=lambda e, u=item["video"]: page.launch_url(u))
+                 link.content.style = ft.ButtonStyle(color=c_txt)
+
+            extras = ft.Container()
+            if item.get("contenido"):
+                extras = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), tile_padding=0, controls=[ft.Container(padding=10, content=ft.Text(item["contenido"], size=12, color=c_txt))])
 
             btns = ft.Row([
-                lnk, ft.Container(expand=True),
-                ft.IconButton("edit", icon_color="blue", on_click=lambda e, i=item: check_admin(lambda: abrir_form(i))),
-                ft.IconButton("delete", icon_color="red", on_click=lambda e, key=k, i=item["id"]: check_admin(lambda: confirmar_del(key, i)))
+                link, ft.Container(expand=True),
+                ft.IconButton("edit", icon_color=c_ico, on_click=lambda e, i=item: check_admin(lambda: abrir_form(i))),
+                ft.IconButton("delete", icon_color="red", on_click=lambda e, k=key, i=item["id"]: check_admin(lambda: confirmar_borrado(k, i)))
             ], alignment="end")
 
             info = ft.Column([
-                ft.Row([ft.Icon(ico, color="green"), ft.Text(item["titulo"], weight="bold", size=18, color=c_txt, expand=True)]),
+                ft.Row([ft.Icon(icon, color="green"), ft.Text(item["titulo"], weight="bold", size=18, color=c_txt, expand=True)]),
                 ft.Text(item["desc"], size=12, color=c_txt),
-                extra, btns
+                extras, btns
             ])
-
-            st = []
-            if tiene_foto: st.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True))
-            st.append(ft.Container(bgcolor=bg, padding=10, content=info, expand=True))
             
-            c.controls.append(ft.Card(elevation=5, content=ft.Container(height=280, content=ft.Stack(controls=st))))
-        return c
+            # Stack Fondo
+            stack = []
+            if tiene_foto: stack.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True))
+            stack.append(ft.Container(bgcolor=bg, padding=10, content=info, expand=True))
+            
+            col.controls.append(ft.Card(elevation=5, content=ft.Container(height=280, content=ft.Stack(controls=stack))))
+        return col
 
+    # --- 10. NAVEGACIÓN ---
     def mostrar(idx):
         estado["seccion"] = idx
         btn_add.visible = (idx != 0)
@@ -224,33 +243,25 @@ def main(page: ft.Page):
             titulo.value = "Vegan Green"
         else:
             contenedor.alignment = ft.alignment.top_center
-            k = ["", "recetas", "restaurantes", "productos"][idx]
-            contenedor.content = get_lista(k, "green", "star")
+            key = ["", "recetas", "restaurantes", "productos"][idx]
+            contenedor.content = get_lista(key, "green", "star")
         page.update()
 
-    def toggle_lock(e):
-        if estado["admin"]:
-            estado["admin"] = False
-            btn_lock.icon = "lock_outline"
-            btn_lock.icon_color = "white"
-            try: page.open(ft.SnackBar(ft.Text("Sesión cerrada")))
-            except: pass
-        else:
-            check_admin(lambda: None)
-
-    btn_add = ft.FloatingActionButton(icon="add", on_click=lambda e: check_admin(lambda: abrir_form(None)), visible=False)
-    btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=toggle_lock)
     titulo = ft.Text("Vegan Green", color="white", size=20, weight="bold")
+    nav = ft.NavigationBar(on_change=lambda e: mostrar(e.control.selected_index), destinations=[
+        ft.NavigationDestination(icon="home", label="Inicio"),
+        ft.NavigationDestination(icon="book", label="Recetas"),
+        ft.NavigationDestination(icon="store", label="Sitios"),
+        ft.NavigationDestination(icon="shopping_bag", label="Productos")
+    ])
 
     page.add(ft.Column([
-        ft.Container(padding=10, bgcolor="green", content=ft.Row([ft.Row([ft.Icon("eco", color="white"), titulo]), ft.Row([btn_add, btn_lock])], alignment="spaceBetween")),
+        ft.Container(padding=10, bgcolor="green", content=ft.Row([
+            ft.Row([ft.Icon("eco", color="white"), titulo]),
+            ft.Row([btn_add, btn_lock])
+        ], alignment="spaceBetween")),
         ft.Container(content=stack_main, expand=True),
-        ft.NavigationBar(on_change=lambda e: mostrar(e.control.selected_index), destinations=[
-            ft.NavigationDestination(icon="home", label="Inicio"),
-            ft.NavigationDestination(icon="book", label="Recetas"),
-            ft.NavigationDestination(icon="store", label="Sitios"),
-            ft.NavigationDestination(icon="shopping_bag", label="Productos")
-        ])
+        nav
     ], expand=True))
     mostrar(0)
 
