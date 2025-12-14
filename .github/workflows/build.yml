@@ -1,6 +1,9 @@
 name: Construir App
 
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   android:
@@ -17,7 +20,7 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Instalar Flet
+      - name: Instalar dependencias
         run: |
           pip install --upgrade pip
           pip install flet
@@ -26,8 +29,7 @@ jobs:
         run: echo "flet" > requirements.txt
         
       - name: Construir APK
-        # COMANDO CORRECTO: Sin argumentos extra.
-        # Leerá automáticamente "Vegan Green" del archivo pyproject.toml
+        # Comando limpio. Usará tu pyproject.toml para el nombre
         run: flet build apk -vv
         
       - name: Subir APK
