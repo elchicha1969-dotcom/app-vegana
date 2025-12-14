@@ -1,5 +1,6 @@
-name: Construir APK
-on: workflow_dispatch
+name: Construir App
+
+on: [push, workflow_dispatch]
 
 jobs:
   android:
@@ -16,15 +17,21 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Instalar Flet
-        run: pip install flet
+      - name: Instalar dependencias
+        run: |
+          pip install --upgrade pip
+          pip install flet
+          
+      - name: Crear requirements
+        run: echo "flet" > requirements.txt
         
-      - name: Construir
-        # ESTE COMANDO ES LA CLAVE: 
-        # Al no poner nada más, usa tu pyproject.toml sin dar error.
+      - name: Construir APK
+        # COMANDO CORREGIDO:
+        # Quitamos --product-name y --org porque ya están en tu archivo pyproject.toml
+        # Solo dejamos -vv para ver detalles
         run: flet build apk -vv
         
-      - name: Subir Resultado
+      - name: Subir APK
         uses: actions/upload-artifact@v4
         with:
           name: vegan-green-app
