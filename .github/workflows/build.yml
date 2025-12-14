@@ -25,12 +25,14 @@ jobs:
       - name: Crear requirements
         run: echo "flet" > requirements.txt
 
-      - name: DIAGNOSTICO - VER ARCHIVOS
-        run: ls -R
+      # Diagnóstico para ver qué está pasando si falla
+      - name: Ver versión de Flet
+        run: flet --version
         
       - name: Construir APK
-        # Usamos el comando simple. Si falla, miraremos el paso anterior.
-        run: flet build apk -vv
+        # COMANDO LIMPIO: Solo le decimos qué archivo usar.
+        # El nombre y la configuración los leerá de tu pyproject.toml
+        run: flet build apk --module-name main -vv
         
       - name: Subir APK
         uses: actions/upload-artifact@v4
