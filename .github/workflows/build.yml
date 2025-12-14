@@ -1,9 +1,6 @@
 name: Construir App
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 jobs:
   android:
@@ -20,7 +17,7 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Instalar dependencias
+      - name: Instalar Flet
         run: |
           pip install --upgrade pip
           pip install flet
@@ -28,8 +25,11 @@ jobs:
       - name: Crear requirements
         run: echo "flet" > requirements.txt
         
+      - name: Ver archivos
+        run: ls -R
+        
       - name: Construir APK
-        # Comando limpio. Usará tu pyproject.toml para el nombre
+        # Comando simple. Leerá main.py y el nombre desde pyproject.toml
         run: flet build apk -vv
         
       - name: Subir APK
@@ -37,5 +37,3 @@ jobs:
         with:
           name: vegan-green-app
           path: build/apk/
-
-
