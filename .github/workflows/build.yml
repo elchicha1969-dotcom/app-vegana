@@ -1,4 +1,4 @@
-name: Build
+name: Construir App
 
 on: [push]
 
@@ -14,16 +14,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install flet
-      - run: echo "flet" > requirements.txt
       
-      - name: Build APK
-        # Comando sin argumentos complicados.
+      - name: Instalar Flet
+        run: |
+          pip install --upgrade pip
+          pip install flet
+          
+      - name: Crear requirements
+        run: echo "flet" > requirements.txt
+        
+      - name: Construir APK
+        # CLAVE: --module-name main obliga a usar main.py
+        # El nombre "Vegan Green" lo leerá solo del pyproject.toml
         run: flet build apk --module-name main -vv
         
-      - uses: actions/upload-artifact@v4
+      - name: Subir APK
+        uses: actions/upload-artifact@v4
         with:
-          name: app-vegana
+          name: vegan-green-app
           path: build/apk/
 
 
