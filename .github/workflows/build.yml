@@ -24,9 +24,12 @@ jobs:
           
       - name: Crear requirements
         run: echo "flet" > requirements.txt
+
+      - name: DIAGNOSTICO - VER ARCHIVOS
+        run: ls -R
         
       - name: Construir APK
-        # Comando simple. Leerá el nombre y archivo desde pyproject.toml
+        # Usamos el comando simple. Si falla, miraremos el paso anterior.
         run: flet build apk -vv
         
       - name: Subir APK
