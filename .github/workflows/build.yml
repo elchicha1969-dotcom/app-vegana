@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Instalar Flet
+      - name: Instalar dependencias
         run: |
           pip install --upgrade pip
           pip install flet
@@ -25,11 +25,8 @@ jobs:
       - name: Crear requirements
         run: echo "flet" > requirements.txt
         
-      - name: Ver archivos
-        run: ls -R
-        
       - name: Construir APK
-        # Comando simple. Leerá main.py y el nombre desde pyproject.toml
+        # Comando simple. Usa pyproject.toml
         run: flet build apk -vv
         
       - name: Subir APK
@@ -37,3 +34,5 @@ jobs:
         with:
           name: vegan-green-app
           path: build/apk/
+
+
