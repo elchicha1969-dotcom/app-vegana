@@ -4,30 +4,26 @@ import json
 import urllib.request 
 
 def main(page: ft.Page):
-    # --- 1. CONFIGURACIÓN ---
+    # --- CONFIGURACIÓN ---
     page.title = "Vegan Green"
     page.theme_mode = "light"
     page.padding = 0 
     page.bgcolor = "#202020" 
     page.theme = ft.Theme(color_scheme_seed="#388E3C")
 
-    # --- 2. IMÁGENES ---
-    # Usamos ruta local. Asegúrate de tener la carpeta 'assets' con 'portada.jpg'
+    # --- IMAGEN ---
     FONDO_APP = "/portada.jpg"
     IMAGEN_DEFAULT = "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
     
-    # --- 3. TU NUBE FIREBASE ---
-    # ¡PEGA TU URL AQUÍ! (Ej: "https://tu-proyecto.firebaseio.com")
+    # --- FIREBASE ---
     FIREBASE_URL = "" 
-    
     USAR_NUBE = bool(FIREBASE_URL)
 
-    # --- 4. GESTIÓN DE DATOS ---
+    # --- GESTIÓN DATOS ---
     def cargar_nube(coleccion):
         if not USAR_NUBE: return []
         try:
-            url = f"{FIREBASE_URL}/{coleccion}.json"
-            with urllib.request.urlopen(url) as r:
+            with urllib.request.urlopen(f"{FIREBASE_URL}/{coleccion}.json") as r:
                 if r.status == 200:
                     d = json.loads(r.read().decode())
                     if d: return list(d.values()) if isinstance(d, dict) else [x for x in d if x]
@@ -64,7 +60,7 @@ def main(page: ft.Page):
     
     estado = {"seccion": 0, "admin": False, "edit_id": None} 
 
-    # --- 5. INTERFAZ (FONDO SEGURO) ---
+    # --- FONDO ---
     fondo_img = ft.Image(src=FONDO_APP, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#388E3C"))
     contenedor = ft.Container(expand=True, padding=10, alignment=ft.alignment.center)
     stack_main = ft.Stack(controls=[fondo_img, contenedor], expand=True)
@@ -73,7 +69,7 @@ def main(page: ft.Page):
         page.client_storage.set(f"mis_{key}", db[key])
         if USAR_NUBE: guardar_nube(key, db[key])
 
-    # --- 6. BORRADO Y GUARDADO ---
+    # --- LÓGICA ---
     def borrar(key, id_obj):
         db[key] = [x for x in db[key] if x.get("id") != id_obj]
         sync(key)
@@ -101,7 +97,7 @@ def main(page: ft.Page):
         except: pass
         mostrar(estado["seccion"])
 
-    # --- 7. FORMULARIO ---
+    # --- FORMULARIO ---
     txt_titulo = ft.Text("Nuevo", size=20, weight="bold", color="green")
     input_nombre = ft.TextField(label="Nombre", bgcolor="white", color="black")
     input_desc = ft.TextField(label="Descripción", bgcolor="white", color="black")
@@ -132,7 +128,7 @@ def main(page: ft.Page):
         input_vid.value = item["video"] if item else ""
         input_cont.value = item["contenido"] if item else ""
         
-        # Iconos seguros (strings)
+        # AJUSTE SEGURO DE ETIQUETAS (Sin .update() prematuro)
         if estado["seccion"] == 2:
             input_desc.label = "Lugar"
             input_desc.icon = "map"
@@ -147,7 +143,7 @@ def main(page: ft.Page):
         btn_add.visible = False
         page.update()
 
-    # --- 8. SEGURIDAD ---
+    # --- SEGURIDAD ---
     input_pin = ft.TextField(label="PIN", password=True, text_align="center")
     def validar_pin(e, callback):
         if input_pin.value == "1969":
@@ -184,9 +180,15 @@ def main(page: ft.Page):
         btn_lock.icon_color = "yellow" if estado["admin"] else "white"
         page.update()
 
-    # --- 9. LISTAS ---
+    btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=toggle_admin)
+    btn_add = ft.IconButton(icon="add_circle", icon_color="white", icon_size=30, on_click=lambda e: check_admin(lambda: abrir_form(None)), visible=False)
+
+    # --- LISTAS ---
     def get_lista(key, color, icon):
         col = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
+        if USAR_NUBE:
+            col.controls.append(ft.TextButton("Sincronizar Nube", icon="cloud_sync", on_click=lambda e: [db.update({k: cargar_nube(k) for k in db}), mostrar(estado["seccion"])]))
+
         for item in db[key]:
             src = item.get("imagen") or IMAGEN_DEFAULT
             tiene_foto = bool(item.get("imagen"))
@@ -195,19 +197,19 @@ def main(page: ft.Page):
             c_ico = "white" if tiene_foto else "green"
             bg = "#99000000" if tiene_foto else "white"
             
-            # Elementos
             link = ft.Container()
             if item.get("video"):
-                 lbl = item["video"].replace("https://","")[:15]+"..."
+                 lbl = item["video"].replace("https://","")[:12]+"..."
                  link = ft.TextButton(lbl, icon="link", icon_color="blue", on_click=lambda e, u=item["video"]: page.launch_url(u))
-            
+                 link.content.style = ft.ButtonStyle(color=c_txt)
+
             extras = ft.Container()
             if item.get("contenido"):
-                extras = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), controls=[ft.Container(padding=10, content=ft.Text(item["contenido"], size=12, color=c_txt))])
+                extras = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), tile_padding=0, controls=[ft.Container(padding=10, content=ft.Text(item["contenido"], size=12, color=c_txt))])
 
             btns = ft.Row([
                 link, ft.Container(expand=True),
-                ft.IconButton("edit", icon_color="blue", on_click=lambda e, i=item: check_admin(lambda: abrir_form(i))),
+                ft.IconButton("edit", icon_color=c_ico, on_click=lambda e, i=item: check_admin(lambda: abrir_form(i))),
                 ft.IconButton("delete", icon_color="red", on_click=lambda e, k=key, i=item["id"]: check_admin(lambda: confirmar_borrado(k, i)))
             ], alignment="end")
 
@@ -217,7 +219,6 @@ def main(page: ft.Page):
                 extras, btns
             ])
             
-            # Stack Fondo
             stack = []
             if tiene_foto: stack.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True))
             stack.append(ft.Container(bgcolor=bg, padding=10, content=info, expand=True))
@@ -225,7 +226,6 @@ def main(page: ft.Page):
             col.controls.append(ft.Card(elevation=5, content=ft.Container(height=280, content=ft.Stack(controls=stack))))
         return col
 
-    # --- 10. NAVEGACIÓN ---
     def mostrar(idx):
         estado["seccion"] = idx
         btn_add.visible = (idx != 0)
@@ -236,29 +236,24 @@ def main(page: ft.Page):
             contenedor.alignment = ft.alignment.center
             contenedor.content = ft.Container()
             titulo.value = "Vegan Green"
-            if USAR_NUBE: # Sincronizar al volver al inicio
-                 db["recetas"] = cargar_nube("recetas")
-                 db["restaurantes"] = cargar_nube("restaurantes")
-                 db["productos"] = cargar_nube("productos")
         else:
             contenedor.alignment = ft.alignment.top_center
             key = ["", "recetas", "restaurantes", "productos"][idx]
             contenedor.content = get_lista(key, "green", "star")
         page.update()
 
-    btn_add = ft.FloatingActionButton(icon="add", on_click=lambda e: check_admin(lambda: abrir_form(None)), visible=False)
-    btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=toggle_admin)
-    titulo = ft.Text("Vegan Green", color="white", size=20, weight="bold")
-    
-    app_bar = ft.Container(padding=10, bgcolor="green", content=ft.Row([ft.Row([ft.Icon("eco", color="white"), titulo]), ft.Row([btn_add, btn_lock])], alignment="spaceBetween"))
     nav = ft.NavigationBar(on_change=lambda e: mostrar(e.control.selected_index), destinations=[
         ft.NavigationDestination(icon="home", label="Inicio"),
         ft.NavigationDestination(icon="book", label="Recetas"),
         ft.NavigationDestination(icon="store", label="Sitios"),
         ft.NavigationDestination(icon="shopping_bag", label="Productos")
     ])
-
+    titulo = ft.Text("Vegan Green", color="white", size=20, weight="bold")
+    app_bar = ft.Container(padding=10, bgcolor="green", content=ft.Row([ft.Row([ft.Icon("eco", color="white"), titulo]), ft.Row([btn_add, btn_lock])], alignment="spaceBetween"))
+    
     page.add(ft.Column([app_bar, ft.Container(content=stack_main, expand=True), nav], expand=True))
     mostrar(0)
 
 ft.app(target=main, assets_dir="assets")
+
+
