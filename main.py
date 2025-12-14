@@ -4,46 +4,52 @@ import json
 import urllib.request 
 
 def main(page: ft.Page):
+    # --- 1. CONFIGURACIÓN ---
     page.title = "Vegan Green"
     page.theme_mode = "light"
     page.padding = 0 
     page.bgcolor = "#202020" 
     page.theme = ft.Theme(color_scheme_seed="#388E3C")
 
+    # --- 2. IMÁGENES ---
     FONDO_APP = "/portada.jpg"
     IMAGEN_DEFAULT = "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
+    
+    # PEGA TU URL DE FIREBASE AQUÍ:
     FIREBASE_URL = "" 
     USAR_NUBE = bool(FIREBASE_URL)
 
-    # --- DATOS ---
-    def cargar_nube(col):
+    # --- 3. GESTIÓN DATOS ---
+    def cargar_nube(coleccion):
         if not USAR_NUBE: return []
         try:
-            with urllib.request.urlopen(f"{FIREBASE_URL}/{col}.json") as r:
+            with urllib.request.urlopen(f"{FIREBASE_URL}/{coleccion}.json") as r:
                 if r.status == 200:
                     d = json.loads(r.read().decode())
                     if d: return list(d.values()) if isinstance(d, dict) else [x for x in d if x]
             return []
         except: return []
 
-    def guardar_nube(col, data):
+    def guardar_nube(coleccion, datos):
         if not USAR_NUBE: return
         try:
-            req = urllib.request.Request(f"{FIREBASE_URL}/{col}.json", data=json.dumps(data).encode(), method='PUT')
+            req = urllib.request.Request(f"{FIREBASE_URL}/{coleccion}.json", data=json.dumps(datos).encode(), method='PUT')
             req.add_header('Content-Type', 'application/json')
             with urllib.request.urlopen(req): pass
         except: pass
 
     def cargar(key):
         if USAR_NUBE:
-            n = cargar_nube(key.replace("mis_", ""))
-            if n: page.client_storage.set(key, n); return n
+            nube = cargar_nube(key.replace("mis_", ""))
+            if nube: 
+                page.client_storage.set(key, nube)
+                return nube
         try:
-            l = page.client_storage.get(key)
-            if not l: return []
-            for i in l:
-                if "id" not in i: i["id"] = str(uuid.uuid4())
-            return l
+            local = page.client_storage.get(key)
+            if not local: return []
+            for i in local:
+                if isinstance(i, dict) and "id" not in i: i["id"] = str(uuid.uuid4())
+            return local
         except: return []
 
     db = {
@@ -54,7 +60,7 @@ def main(page: ft.Page):
     
     estado = {"seccion": 0, "admin": False, "edit_id": None} 
 
-    # --- UI ---
+    # --- 4. INTERFAZ ---
     fondo_img = ft.Image(src=FONDO_APP, fit=ft.ImageFit.COVER, opacity=1.0, expand=True, error_content=ft.Container(bgcolor="#388E3C"))
     contenedor = ft.Container(expand=True, padding=10, alignment=ft.alignment.center)
     stack_main = ft.Stack(controls=[fondo_img, contenedor], expand=True)
@@ -63,6 +69,7 @@ def main(page: ft.Page):
         page.client_storage.set(f"mis_{key}", db[key])
         if USAR_NUBE: guardar_nube(key, db[key])
 
+    # --- 5. BORRADO ---
     def borrar(key, id_obj):
         db[key] = [x for x in db[key] if x.get("id") != id_obj]
         sync(key)
@@ -73,8 +80,7 @@ def main(page: ft.Page):
     def guardar_item(e):
         if not input_nombre.value: return
         data = {"titulo": input_nombre.value, "desc": input_desc.value, "tag": input_tag.value, "imagen": input_img.value, "video": input_vid.value, "contenido": input_cont.value}
-        k_idx = estado["seccion"]
-        key = ["", "recetas", "restaurantes", "productos"][k_idx]
+        key = ["", "recetas", "restaurantes", "productos"][estado["seccion"]]
         
         if estado["edit_id"]:
             for i, x in enumerate(db[key]):
@@ -89,9 +95,9 @@ def main(page: ft.Page):
         sync(key)
         try: page.open(ft.SnackBar(ft.Text("Guardado"), bgcolor="green"))
         except: pass
-        mostrar(k_idx)
+        mostrar(estado["seccion"])
 
-    # Formulario
+    # --- 6. FORMULARIO ---
     txt_titulo = ft.Text("Nuevo", size=20, weight="bold", color="green")
     input_nombre = ft.TextField(label="Nombre", bgcolor="white", color="black")
     input_desc = ft.TextField(label="Descripción", bgcolor="white", color="black")
@@ -122,7 +128,6 @@ def main(page: ft.Page):
         input_vid.value = item["video"] if item else ""
         input_cont.value = item["contenido"] if item else ""
         
-        # Ajustamos etiqueta sin .update() para evitar error
         if estado["seccion"] == 2:
             input_desc.label = "Lugar"
             input_desc.icon = "map"
@@ -137,7 +142,7 @@ def main(page: ft.Page):
         btn_add.visible = False
         page.update()
 
-    # Seguridad
+    # --- 7. SEGURIDAD ---
     input_pin = ft.TextField(label="PIN", password=True, text_align="center")
     def validar(e, cb):
         if input_pin.value == "1969":
@@ -167,15 +172,22 @@ def main(page: ft.Page):
     # Listas
     def get_lista(k, col, ico):
         c = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
+        
+        # Botón Refrescar
+        if USAR_NUBE:
+             c.controls.append(ft.TextButton("Refrescar", icon="refresh", on_click=lambda e: [db.update({k: cargar_nube(k) for k in db}), mostrar(estado["seccion"])]))
+
         for item in db[k]:
             src = item.get("imagen") or IMAGEN_DEFAULT
-            has_img = bool(item.get("imagen"))
-            txt_c = "white" if has_img else "black"
-            bg = "#99000000" if has_img else "white"
+            tiene_foto = bool(item.get("imagen"))
+            
+            c_txt = "white" if tiene_foto else "black"
+            c_ico = "white" if tiene_foto else "green"
+            bg = "#99000000" if tiene_foto else "white"
 
             extra = ft.Container()
             if item.get("contenido"):
-                extra = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), controls=[ft.Container(padding=10, content=ft.Text(item["contenido"], size=12, color=txt_c))])
+                extra = ft.ExpansionTile(title=ft.Text("Ver más", size=12, color="blue"), controls=[ft.Container(padding=10, content=ft.Text(item["contenido"], size=12, color=c_txt))])
 
             lnk = ft.Container()
             if item.get("video"):
@@ -184,17 +196,17 @@ def main(page: ft.Page):
             btns = ft.Row([
                 lnk, ft.Container(expand=True),
                 ft.IconButton("edit", icon_color="blue", on_click=lambda e, i=item: check_admin(lambda: abrir_form(i))),
-                ft.IconButton("delete", icon_color="red", on_click=lambda e, key=k, i=item: check_admin(lambda: confirmar_del(key, i)))
+                ft.IconButton("delete", icon_color="red", on_click=lambda e, key=k, i=item["id"]: check_admin(lambda: confirmar_del(key, i)))
             ], alignment="end")
 
             info = ft.Column([
-                ft.Row([ft.Icon(ico, color="green"), ft.Text(item["titulo"], weight="bold", size=18, color=txt_c, expand=True)]),
-                ft.Text(item["desc"], size=12, color=txt_c),
+                ft.Row([ft.Icon(ico, color="green"), ft.Text(item["titulo"], weight="bold", size=18, color=c_txt, expand=True)]),
+                ft.Text(item["desc"], size=12, color=c_txt),
                 extra, btns
             ])
 
             st = []
-            if has_img: st.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True))
+            if tiene_foto: st.append(ft.Image(src=src, fit=ft.ImageFit.COVER, opacity=1.0, expand=True))
             st.append(ft.Container(bgcolor=bg, padding=10, content=info, expand=True))
             
             c.controls.append(ft.Card(elevation=5, content=ft.Container(height=280, content=ft.Stack(controls=st))))
@@ -216,8 +228,18 @@ def main(page: ft.Page):
             contenedor.content = get_lista(k, "green", "star")
         page.update()
 
+    def toggle_lock(e):
+        if estado["admin"]:
+            estado["admin"] = False
+            btn_lock.icon = "lock_outline"
+            btn_lock.icon_color = "white"
+            try: page.open(ft.SnackBar(ft.Text("Sesión cerrada")))
+            except: pass
+        else:
+            check_admin(lambda: None)
+
     btn_add = ft.FloatingActionButton(icon="add", on_click=lambda e: check_admin(lambda: abrir_form(None)), visible=False)
-    btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=lambda e: [page.open(ft.SnackBar(ft.Text("Cerrado"))), setattr(estado, "admin", False), actualizar_candado()] if estado["admin"] else check_admin(lambda: page.open(ft.SnackBar(ft.Text("Abierto")))))
+    btn_lock = ft.IconButton(icon="lock_outline", icon_color="white", on_click=toggle_lock)
     titulo = ft.Text("Vegan Green", color="white", size=20, weight="bold")
 
     page.add(ft.Column([
@@ -231,7 +253,5 @@ def main(page: ft.Page):
         ])
     ], expand=True))
     mostrar(0)
-
-def actualizar_candado(): pass # Placeholder simplificado
 
 ft.app(target=main, assets_dir="assets")
