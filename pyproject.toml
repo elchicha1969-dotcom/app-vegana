@@ -6,4 +6,3 @@ copyright = "Copyright (c) 2025 Vegan Green"
 
 [tool.flet.app]
 path = "main.py"
-
