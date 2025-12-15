@@ -1,4 +1,4 @@
-name: Construir App
+name: Build APK
 
 on: [push, workflow_dispatch]
 
@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Instalar dependencias
+      - name: Instalar Flet
         run: |
           pip install --upgrade pip
           pip install flet
@@ -26,8 +26,7 @@ jobs:
         run: echo "flet" > requirements.txt
         
       - name: Construir APK
-        # COMANDO MAESTRO: Sin argumentos extra.
-        # Flet leerá automáticamente el nombre y configuración de 'pyproject.toml'
+        # AL NO PONER ARGUMENTOS, USARÁ EL pyproject.toml DE ARRIBA
         run: flet build apk -vv
         
       - name: Subir APK
@@ -35,3 +34,5 @@ jobs:
         with:
           name: vegan-green-app
           path: build/apk/
+
+
