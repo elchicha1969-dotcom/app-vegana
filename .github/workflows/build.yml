@@ -1,4 +1,4 @@
-name: Build APK
+name: Construir App
 
 on: [push, workflow_dispatch]
 
@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Instalar Flet
+      - name: Instalar dependencias
         run: |
           pip install --upgrade pip
           pip install flet
@@ -26,7 +26,7 @@ jobs:
         run: echo "flet" > requirements.txt
         
       - name: Construir APK
-        # AL NO PONER ARGUMENTOS, USARÁ EL pyproject.toml DE ARRIBA
+        # ESTA ES LA LÍNEA CLAVE. NO AÑADAS NADA MÁS AQUÍ.
         run: flet build apk -vv
         
       - name: Subir APK
