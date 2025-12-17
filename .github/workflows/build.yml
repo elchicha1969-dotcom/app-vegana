@@ -17,17 +17,29 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Instalar Flet
+      - name: Instalar dependencias
         run: |
           pip install --upgrade pip
           pip install flet
           
-      - name: Crear requirements
-        run: echo "flet" > requirements.txt
-        
+      - name: Generar Archivos de Configuracion
+        # Este paso crea el pyproject.toml perfecto automáticamente
+        run: |
+          echo "flet" > requirements.txt
+          echo "[tool.flet]" > pyproject.toml
+          echo 'product_name = "Vegan Green"' >> pyproject.toml
+          echo 'org = "com.vegangreen.app"' >> pyproject.toml
+          echo 'app_description = "App de recetas veganas"' >> pyproject.toml
+          echo 'copyright = "Copyright (c) 2025 Vegan Green"' >> pyproject.toml
+          echo "" >> pyproject.toml
+          echo "[tool.flet.app]" >> pyproject.toml
+          echo 'path = "main.py"' >> pyproject.toml
+          
+      - name: Verificar Archivos
+        run: ls -la
+
       - name: Construir APK
-        # COMANDO CORTO - IMPOSIBLE QUE DE EL ERROR DE ARGUMENTOS
-        # Si sale error de argumentos, es que se está ejecutando OTRO archivo viejo.
+        # Comando simple que usa el archivo generado arriba
         run: flet build apk -vv
         
       - name: Subir APK
