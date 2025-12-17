@@ -22,11 +22,25 @@ jobs:
           pip install --upgrade pip
           pip install flet
           
-      - name: Crear requirements
-        run: echo "flet" > requirements.txt
+      # PASO NUEVO: El robot crea los archivos necesarios él mismo
+      # Así nos aseguramos de que existan y estén perfectos.
+      - name: Generar Configuración Automática
+        run: |
+          echo "flet" > requirements.txt
+          echo "[tool.flet]" > pyproject.toml
+          echo 'product_name = "Vegan Green"' >> pyproject.toml
+          echo 'org = "com.vegangreen.app"' >> pyproject.toml
+          echo 'app_description = "App Vegana"' >> pyproject.toml
+          echo 'copyright = "Copyright (c) 2025"' >> pyproject.toml
+          echo "" >> pyproject.toml
+          echo "[tool.flet.app]" >> pyproject.toml
+          echo 'path = "main.py"' >> pyproject.toml
+
+      - name: Verificar archivos (Para que veas que están ahí)
+        run: cat pyproject.toml
         
       - name: Construir APK
-        # ESTA ES LA LÍNEA CLAVE. NO AÑADAS NADA MÁS AQUÍ.
+        # Comando simple. Ahora sí funcionará porque el archivo acaba de ser creado.
         run: flet build apk -vv
         
       - name: Subir APK
@@ -34,5 +48,3 @@ jobs:
         with:
           name: vegan-green-app
           path: build/apk/
-
-
