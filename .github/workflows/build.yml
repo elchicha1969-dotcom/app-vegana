@@ -22,19 +22,35 @@ jobs:
           pip install --upgrade pip
           pip install flet
           
-      - name: Generar Configuración Limpia
-        # Borramos cualquier archivo viejo y creamos uno nuevo perfecto
+      - name: Generar Configuración (Metodo Seguro)
+        shell: bash
         run: |
+          # Borramos versiones anteriores para evitar conflictos
           rm -f pyproject.toml
           rm -f requirements.txt
-          echo "flet" > requirements.txt
-          printf "[tool.flet]\nproduct_name = \"Vegan Green\"\norg = \"com.vegangreen.app\"\napp_description = \"App Vegana\"\ncopyright = \"Copyright (c) 2025\"\n\n[tool.flet.app]\npath = \"main.py\"" > pyproject.toml
           
-      - name: Verificar Archivos (Debug)
-        run: cat pyproject.toml
+          # Creamos requirements.txt
+          echo "flet" > requirements.txt
+          
+          # Creamos pyproject.toml usando cat para evitar errores de texto
+          cat <<EOF > pyproject.toml
+          [tool.flet]
+          product_name = "Vegan Green"
+          org = "com.vegangreen.app"
+          app_description = "App Vegana"
+          copyright = "Copyright (c) 2025"
+          
+          [tool.flet.app]
+          path = "main.py"
+          EOF
+          
+      - name: Verificar Archivos
+        run: |
+          ls -la
+          cat pyproject.toml
 
       - name: Construir APK
-        # Comando simple. Usará el archivo que acabamos de generar
+        # Comando simple
         run: flet build apk -vv
         
       - name: Subir APK
