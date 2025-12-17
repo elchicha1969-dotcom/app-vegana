@@ -22,20 +22,25 @@ jobs:
           pip install --upgrade pip
           pip install flet
           
-      - name: LIMPIEZA FORZADA
-        # Este paso borra cualquier configuración tuya que pueda dar error
+      - name: Generar Configuración (El Robot crea el DNI)
+        # Aquí creamos el archivo pyproject.toml línea por línea
         run: |
-          rm -f pyproject.toml
-          rm -f requirements.txt
           echo "flet" > requirements.txt
+          echo "[tool.flet]" > pyproject.toml
+          echo 'product_name = "Vegan Green"' >> pyproject.toml
+          echo 'org = "com.vegangreen.app"' >> pyproject.toml
+          echo 'app_description = "App Vegana"' >> pyproject.toml
+          echo 'copyright = "Copyright (c) 2025"' >> pyproject.toml
+          echo "" >> pyproject.toml
+          echo "[tool.flet.app]" >> pyproject.toml
+          echo 'path = "main.py"' >> pyproject.toml
+          
+      - name: Verificación (Opcional)
+        run: cat pyproject.toml
 
-      - name: Verificar Archivos
-        run: ls -R
-
-      - name: Fabricar APK
-        # Como hemos borrado pyproject.toml en el paso anterior,
-        # AHORA SÍ podemos usar este comando completo sin errores.
-        run: flet build apk --module-name main --product-name "Vegan Green" --org "com.vegangreen.app" -vv
+      - name: Construir APK
+        # Comando limpio. Al haber creado el archivo arriba, esto funcionará.
+        run: flet build apk -vv
         
       - name: Subir APK
         uses: actions/upload-artifact@v4
