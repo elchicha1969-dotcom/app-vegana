@@ -22,27 +22,24 @@ jobs:
           pip install --upgrade pip
           pip install flet
           
-      - name: Generar Configuración (Metodo Seguro)
-        shell: bash
+      - name: Generar Configuración (Metodo Simple)
         run: |
-          # Borramos versiones anteriores para evitar conflictos
+          # 1. Limpieza preventiva
           rm -f pyproject.toml
           rm -f requirements.txt
           
-          # Creamos requirements.txt
+          # 2. Crear requisitos
           echo "flet" > requirements.txt
           
-          # Creamos pyproject.toml usando cat para evitar errores de texto
-          cat <<EOF > pyproject.toml
-          [tool.flet]
-          product_name = "Vegan Green"
-          org = "com.vegangreen.app"
-          app_description = "App Vegana"
-          copyright = "Copyright (c) 2025"
-          
-          [tool.flet.app]
-          path = "main.py"
-          EOF
+          # 3. Crear pyproject.toml línea a línea (No se cuelga nunca)
+          echo "[tool.flet]" > pyproject.toml
+          echo 'product_name = "Vegan Green"' >> pyproject.toml
+          echo 'org = "com.vegangreen.app"' >> pyproject.toml
+          echo 'app_description = "App Vegana"' >> pyproject.toml
+          echo 'copyright = "Copyright (c) 2025"' >> pyproject.toml
+          echo "" >> pyproject.toml
+          echo "[tool.flet.app]" >> pyproject.toml
+          echo 'path = "main.py"' >> pyproject.toml
           
       - name: Verificar Archivos
         run: |
