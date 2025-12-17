@@ -27,6 +27,7 @@ jobs:
         
       - name: Construir APK
         # COMANDO CORTO - IMPOSIBLE QUE DE EL ERROR DE ARGUMENTOS
+        # Si sale error de argumentos, es que se está ejecutando OTRO archivo viejo.
         run: flet build apk -vv
         
       - name: Subir APK
