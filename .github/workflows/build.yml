@@ -1,4 +1,4 @@
-name: Construir App
+name: Construir App Vegana
 
 on: [push, workflow_dispatch]
 
@@ -22,28 +22,15 @@ jobs:
           pip install --upgrade pip
           pip install flet
           
-      - name: Generar Configuración (El Robot crea el DNI)
-        # Aquí creamos el archivo pyproject.toml línea por línea
-        run: |
-          echo "flet" > requirements.txt
-          echo "[tool.flet]" > pyproject.toml
-          echo 'product_name = "Vegan Green"' >> pyproject.toml
-          echo 'org = "com.vegangreen.app"' >> pyproject.toml
-          echo 'app_description = "App Vegana"' >> pyproject.toml
-          echo 'copyright = "Copyright (c) 2025"' >> pyproject.toml
-          echo "" >> pyproject.toml
-          echo "[tool.flet.app]" >> pyproject.toml
-          echo 'path = "main.py"' >> pyproject.toml
-          
-      - name: Verificación (Opcional)
-        run: cat pyproject.toml
-
+      - name: Crear requirements
+        run: echo "flet" > requirements.txt
+        
       - name: Construir APK
-        # Comando limpio. Al haber creado el archivo arriba, esto funcionará.
+        # COMANDO CORTO - IMPOSIBLE QUE DE EL ERROR DE ARGUMENTOS
         run: flet build apk -vv
         
       - name: Subir APK
         uses: actions/upload-artifact@v4
         with:
-          name: vegan-green-app
+          name: vegan-green-apk
           path: build/apk/
