@@ -25,34 +25,16 @@ jobs:
           pip install --upgrade pip
           pip install flet
 
-      - name: Generar Archivos de Configuracion (Automatico)
-        # Este paso crea los archivos necesarios DENTRO de la fábrica
-        # para asegurar que están perfectos y sin errores de formato.
+      - name: Generar Configuración con Python
+        # Usamos Python para escribir los archivos. Es mucho más seguro y no falla por espacios.
         run: |
-          # 1. Borramos cualquier rastro antiguo para evitar conflictos
-          rm -f pyproject.toml
-          rm -f requirements.txt
-          
-          # 2. Creamos la lista de requisitos
-          echo "flet" > requirements.txt
-          
-          # 3. Creamos el DNI de la app (pyproject.toml) línea por línea
-          echo "[tool.flet]" > pyproject.toml
-          echo 'product_name = "Vegan Green"' >> pyproject.toml
-          echo 'org = "com.vegangreen.app"' >> pyproject.toml
-          echo 'app_description = "App de recetas veganas"' >> pyproject.toml
-          echo 'copyright = "Copyright (c) 2025"' >> pyproject.toml
-          echo "" >> pyproject.toml
-          echo "[tool.flet.app]" >> pyproject.toml
-          echo 'path = "main.py"' >> pyproject.toml
+          python -c "import os; open('requirements.txt', 'w').write('flet'); open('pyproject.toml', 'w').write('[tool.flet]\nproduct_name = \"Vegan Green\"\norg = \"com.vegangreen.app\"\napp_description = \"App Vegana\"\ncopyright = \"Copyright (c) 2025\"\n\n[tool.flet.app]\npath = \"main.py\"')"
 
-      - name: Verificar (Para diagnostico)
-        run: |
-          ls -la
-          cat pyproject.toml
+      - name: Verificar Archivos
+        run: ls -la
 
       - name: Construir APK
-        # Comando simple. Usará el archivo pyproject.toml que acabamos de crear.
+        # Comando simple.
         run: flet build apk -vv
 
       - name: Subir APK
