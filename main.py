@@ -16,7 +16,7 @@ def main(page: ft.Page):
     IMAGEN_DEFAULT = "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
     
     # 3. FIREBASE (PON TU URL AQUI)
-    FIREBASE_URL = "" 
+    FIREBASE_URL = "https://app-vegana-bd2f0-default-rtdb.firebaseio.com/" 
     USAR_NUBE = bool(FIREBASE_URL)
 
     # 4. GESTIÓN DATOS
