@@ -1,44 +1,37 @@
-name: Construir App Vegana
+    name: Build APK
+    on: workflow_dispatch
 
-on: [push, workflow_dispatch]
+    jobs:
+      android:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+          
+          - name: Setup Java
+            uses: actions/setup-java@v4
+            with:
+              distribution: 'temurin'
+              java-version: '17'
+              
+          - name: Setup Python
+            uses: actions/setup-python@v5
+            with:
+              python-version: '3.11'
+              
+          - name: Install Dependencies
+            run: |
+              pip install --upgrade pip
+              pip install -r requirements.txt
+              
+          - name: Build APK
+            # Comando estándar. Leerá pyproject.toml
+            run: flet build apk -vv
+            
+          - name: Upload APK
+            uses: actions/upload-artifact@v4
+            with:
+              name: vegan-green-apk
+              path: build/apk/
+    
 
-jobs:
-  android:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Descargar codigo
-        uses: actions/checkout@v4
 
-      - name: Configurar Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Configurar Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Instalar Flet
-        run: |
-          pip install --upgrade pip
-          pip install flet
-
-      - name: Generar Configuración con Python
-        # Usamos Python para escribir los archivos. Es mucho más seguro y no falla por espacios.
-        run: |
-          python -c "import os; open('requirements.txt', 'w').write('flet'); open('pyproject.toml', 'w').write('[tool.flet]\nproduct_name = \"Vegan Green\"\norg = \"com.vegangreen.app\"\napp_description = \"App Vegana\"\ncopyright = \"Copyright (c) 2025\"\n\n[tool.flet.app]\npath = \"main.py\"')"
-
-      - name: Verificar Archivos
-        run: ls -la
-
-      - name: Construir APK
-        # Comando simple.
-        run: flet build apk -vv
-
-      - name: Subir APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: vegan-green-app
-          path: build/apk/
