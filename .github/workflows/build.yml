@@ -1,37 +1,48 @@
-    name: Build APK
-    on: workflow_dispatch
+name: Build APK
 
-    jobs:
-      android:
-        runs-on: ubuntu-latest
-        steps:
-          - uses: actions/checkout@v4
+on: workflow_dispatch
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      # 1. Instalamos Java (Necesario para Android)
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
           
-          - name: Setup Java
-            uses: actions/setup-java@v4
-            with:
-              distribution: 'temurin'
-              java-version: '17'
-              
-          - name: Setup Python
-            uses: actions/setup-python@v5
-            with:
-              python-version: '3.11'
-              
-          - name: Install Dependencies
-            run: |
-              pip install --upgrade pip
-              pip install -r requirements.txt
-              
-          - name: Build APK
-            # Comando estándar. Leerá pyproject.toml
-            run: flet build apk -vv
-            
-          - name: Upload APK
-            uses: actions/upload-artifact@v4
-            with:
-              name: vegan-green-apk
-              path: build/apk/
-    
+      # 2. Instalamos Flutter (ESTO ARREGLA EL ERROR DE "ANDROID STUDIO")
+      # Esta acción configura el entorno de Android automáticamente
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          
+      # 3. Instalamos Python
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      # 4. Instalamos Flet
+      - name: Instalar Flet
+        run: |
+          pip install --upgrade pip
+          pip install flet
+      
+      # 5. Creamos requirements (por seguridad)
+      - name: Crear requirements
+        run: echo "flet" > requirements.txt
+        
+      # 6. Construimos la APK
+      - name: Construir APK
+        run: flet build apk -vv
+        
+      # 7. Subimos el resultado
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vegan-green-app
+          path: build/apk/
 
 
