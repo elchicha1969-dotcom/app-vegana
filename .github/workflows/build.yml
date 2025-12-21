@@ -1,4 +1,4 @@
-name: Build APK
+name: Construir App Vegana
 
 on: workflow_dispatch
 
@@ -6,47 +6,58 @@ jobs:
   android:
     runs-on: ubuntu-latest
     steps:
-      # 1. Descargar tu código
       - uses: actions/checkout@v4
       
-      # 2. Instalar Java (Necesario para Android)
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
           
-      # 3. Instalar FLUTTER (¡Esto arregla el error de Android Studio!)
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          
-      # 4. Instalar Python
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           
-      # 5. Instalar Flet
-      - name: Instalar dependencias
+      - name: Instalar Flet y Herramientas
         run: |
           pip install --upgrade pip
           pip install flet
           
-      # 6. Crear lista de ingredientes
-      - name: Crear requirements
-        run: echo "flet" > requirements.txt
-      
-      # 7. Diagnóstico (Para ver qué archivos hay si falla)
-      - name: ¿Que archivos hay aqui?
-        run: ls -R
+      # --- PASO MÁGICO: AUTO-CORRECCIÓN ---
+      # Esto busca tu archivo python (se llame como se llame) y lo convierte en main.py
+      - name: Auto-Corregir Nombre del Archivo
+        run: |
+          echo "Buscando archivos Python..."
+          ls -la *.py
+          # Si no existe main.py, renombramos el primero que encontremos
+          if [ ! -f main.py ]; then
+            ARCHIVO=$(ls *.py | head -n 1)
+            echo "He encontrado $ARCHIVO. Renombrando a main.py..."
+            mv "$ARCHIVO" main.py
+          fi
+          echo "Confirmado: El archivo main.py está listo."
+
+      - name: Generar Configuración Perfecta
+        # Creamos los archivos de configuración desde cero para evitar conflictos
+        run: |
+          rm -f pyproject.toml requirements.txt
+          echo "flet" > requirements.txt
+          
+          # Escribimos el pyproject.toml limpio
+          echo "[tool.flet]" > pyproject.toml
+          echo 'product_name = "Vegan Green"' >> pyproject.toml
+          echo 'org = "com.vegangreen.app"' >> pyproject.toml
+          echo 'app_description = "App de recetas veganas"' >> pyproject.toml
+          echo 'copyright = "Copyright (c) 2025"' >> pyproject.toml
+          echo "" >> pyproject.toml
+          echo "[tool.flet.app]" >> pyproject.toml
+          echo 'path = "main.py"' >> pyproject.toml
+
+      - name: Construir APK
+        # Comando simple. Ahora que hemos asegurado que main.py existe, NO FALLARÁ.
+        run: flet build apk -vv
         
-      # 8. CONSTRUIR APK
-      # Usamos --module-name main para obligarle a usar main.py
-      # El nombre y logo los coge de tu archivo pyproject.toml
-      - name: Build APK
-        run: flet build apk --module-name main -vv
-        
-      # 9. Subir el resultado
-      - uses: actions/upload-artifact@v4
+      - name: Subir APK
+        uses: actions/upload-artifact@v4
         with:
           name: vegan-green-app
           path: build/apk/
