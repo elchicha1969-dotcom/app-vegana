@@ -1,43 +1,51 @@
 name: Build APK
 
-on: [push, workflow_dispatch]
+on: workflow_dispatch
 
 jobs:
   android:
     runs-on: ubuntu-latest
     steps:
+      # 1. Descargar tu código
       - uses: actions/checkout@v4
       
+      # 2. Instalar Java (Necesario para Android)
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
           
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      # PASO CRÍTICO: Configurar Flutter y Android correctamente
+      # 3. Instalar FLUTTER (¡Esto arregla el error de Android Studio!)
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           
-      - name: Instalar Flet
+      # 4. Instalar Python
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      # 5. Instalar Flet
+      - name: Instalar dependencias
         run: |
           pip install --upgrade pip
           pip install flet
           
+      # 6. Crear lista de ingredientes
       - name: Crear requirements
         run: echo "flet" > requirements.txt
-
-      # PASO MÁGICO: Aceptar licencias para que no falle
-      - name: Aceptar Licencias Android
-        run: yes | flutter doctor --android-licenses || true
       
-      - name: Construir APK
-        # Comando simple y directo
-        run: flet build apk -vv
+      # 7. Diagnóstico (Para ver qué archivos hay si falla)
+      - name: ¿Que archivos hay aqui?
+        run: ls -R
         
+      # 8. CONSTRUIR APK
+      # Usamos --module-name main para obligarle a usar main.py
+      # El nombre y logo los coge de tu archivo pyproject.toml
+      - name: Build APK
+        run: flet build apk --module-name main -vv
+        
+      # 9. Subir el resultado
       - uses: actions/upload-artifact@v4
         with:
           name: vegan-green-app
