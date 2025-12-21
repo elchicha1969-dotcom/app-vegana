@@ -1,4 +1,4 @@
-name: Build APK (Rescue)
+name: Construir App Vegana
 
 on: [push, workflow_dispatch]
 
@@ -8,12 +8,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      # 1. Configurar entorno
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
           
-      # Instalamos Flutter para evitar errores de Android SDK
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
@@ -22,31 +22,16 @@ jobs:
         with:
           python-version: '3.11'
           
+      # 2. Instalar Flet
       - name: Instalar Flet
         run: |
           pip install --upgrade pip
           pip install flet
       
-      # --- PASO MÁGICO: ENCONTRAR TU ARCHIVO Y RENOMBRARLO ---
-      - name: BUSCAR Y ARREGLAR ARCHIVO
-        run: |
-          echo "Buscando tu archivo de código..."
-          # Busca el primer archivo .py que encuentre
-          ARCHIVO=$(find . -maxdepth 2 -name "*.py" | head -n 1)
-          
-          if [ -z "$ARCHIVO" ]; then
-             echo "ERROR: No he encontrado ningún archivo .py en tu GitHub."
-             exit 1
-          fi
-          
-          echo "Encontrado: $ARCHIVO"
-          echo "Renombrando a main.py para que funcione..."
-          mv "$ARCHIVO" main.py
-          
-      # --- GENERAR CONFIGURACIÓN AUTOMÁTICA ---
+      # 3. Generar Configuración (Solo creamos los archivos, no movemos nada)
       - name: Generar Configuración
         run: |
-          # Borramos configuraciones viejas
+          # Borramos configuraciones viejas por si acaso
           rm -f pyproject.toml requirements.txt
           
           # Creamos requisitos
@@ -62,12 +47,18 @@ jobs:
           echo "[tool.flet.app]" >> pyproject.toml
           echo 'path = "main.py"' >> pyproject.toml
 
-      # --- CONSTRUIR ---
+      # 4. Aceptar Licencias (Vital para Android)
+      - name: Aceptar Licencias
+        run: |
+          yes | flutter doctor --android-licenses || true
+
+      # 5. Construir
       - name: Construir APK
-        # Comando simple. Ahora sí funcionará porque hemos forzado la existencia de main.py
+        # Comando simple. Ahora sí funcionará porque main.py ya está ahí.
         run: flet build apk -vv
         
-      - uses: actions/upload-artifact@v4
+      - name: Subir APK
+        uses: actions/upload-artifact@v4
         with:
           name: vegan-green-app
           path: build/apk/
