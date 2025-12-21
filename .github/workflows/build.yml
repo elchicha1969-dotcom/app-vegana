@@ -8,7 +8,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # 1. Configurar entorno
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -22,40 +21,34 @@ jobs:
         with:
           python-version: '3.11'
           
-      # 2. Instalar Flet
       - name: Instalar Flet
         run: |
           pip install --upgrade pip
           pip install flet
-      
-      # 3. Generar Configuración (Solo creamos los archivos, no movemos nada)
+          
       - name: Generar Configuración
         run: |
-          # Borramos configuraciones viejas por si acaso
+          # 1. Borramos rastros viejos
           rm -f pyproject.toml requirements.txt
           
-          # Creamos requisitos
+          # 2. Creamos requisitos
           echo "flet" > requirements.txt
           
-          # Creamos el DNI de la app
+          # 3. Creamos el archivo SOLO PARA EL NOMBRE (pyproject.toml)
           echo "[tool.flet]" > pyproject.toml
           echo 'product_name = "Vegan Green"' >> pyproject.toml
           echo 'org = "com.vegangreen.app"' >> pyproject.toml
           echo 'app_description = "App Vegana"' >> pyproject.toml
           echo 'copyright = "Copyright (c) 2025"' >> pyproject.toml
-          echo "" >> pyproject.toml
-          echo "[tool.flet.app]" >> pyproject.toml
-          echo 'path = "main.py"' >> pyproject.toml
+          # NOTA: No añadimos [tool.flet.app] aquí para evitar conflictos, lo haremos por comando.
 
-      # 4. Aceptar Licencias (Vital para Android)
-      - name: Aceptar Licencias
-        run: |
-          yes | flutter doctor --android-licenses || true
+      - name: Verificar que main.py existe
+        run: ls -la main.py
 
-      # 5. Construir
       - name: Construir APK
-        # Comando simple. Ahora sí funcionará porque main.py ya está ahí.
-        run: flet build apk -vv
+        # SOLUCIÓN: Usamos --module-name main explícitamente.
+        # Flet leerá el nombre del archivo toml, pero el punto de entrada de este comando.
+        run: flet build apk --module-name main -vv
         
       - name: Subir APK
         uses: actions/upload-artifact@v4
