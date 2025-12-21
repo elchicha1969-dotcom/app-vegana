@@ -1,66 +1,58 @@
-name: Construir App Vegana (REPARACION TOTAL)
+name: Build APK (Rescue)
 
-on: workflow_dispatch
+on: [push, workflow_dispatch]
 
 jobs:
   android:
     runs-on: ubuntu-latest
     steps:
-      # 1. DESCARGAMOS TU CÓDIGO
       - uses: actions/checkout@v4
       
-      # 2. INSTALAMOS JAVA 17 (Estándar actual)
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
           
-      # 3. ¡SOLUCIÓN ERROR "ANDROID STUDIO"!
-      # Esto instala el entorno Android completo explícitamente.
+      # Instalamos Flutter para evitar errores de Android SDK
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.19.0' # Versión muy estable
           
-      # 4. INSTALAMOS PYTHON
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           
-      # 5. INSTALAMOS FLET
       - name: Instalar Flet
         run: |
           pip install --upgrade pip
           pip install flet
-          
-      # 6. ¡SOLUCIÓN ERROR "MAIN.PY NOT FOUND"!
-      # Este script busca cualquier archivo .py y lo renombra a main.py
-      # Así da igual cómo lo hayas llamado o si te equivocaste en una letra.
-      - name: BUSCAR Y REPARAR MAIN.PY
+      
+      # --- PASO MÁGICO: ENCONTRAR TU ARCHIVO Y RENOMBRARLO ---
+      - name: BUSCAR Y ARREGLAR ARCHIVO
         run: |
-          echo "--- BUSCANDO ARCHIVOS ---"
-          ls -R
-          echo "--- INTENTANDO ARREGLAR ---"
-          # Si main.py no existe en la raíz...
-          if [ ! -f main.py ]; then
-             # Buscamos el primer archivo .py que encontremos
-             ARCHIVO=$(find . -maxdepth 2 -name "*.py" | head -n 1)
-             if [ -n "$ARCHIVO" ]; then
-                echo "Encontrado: $ARCHIVO. Moviéndolo a main.py..."
-                mv "$ARCHIVO" main.py
-             else
-                echo "ERROR GRAVE: No hay ningún archivo .py en este repositorio."
-                exit 1
-             fi
+          echo "Buscando tu archivo de código..."
+          # Busca el primer archivo .py que encuentre
+          ARCHIVO=$(find . -maxdepth 2 -name "*.py" | head -n 1)
+          
+          if [ -z "$ARCHIVO" ]; then
+             echo "ERROR: No he encontrado ningún archivo .py en tu GitHub."
+             exit 1
           fi
-          echo "Listo. main.py existe."
-
-      # 7. GENERAMOS LA CONFIGURACIÓN (Para que no dependa de tus archivos)
+          
+          echo "Encontrado: $ARCHIVO"
+          echo "Renombrando a main.py para que funcione..."
+          mv "$ARCHIVO" main.py
+          
+      # --- GENERAR CONFIGURACIÓN AUTOMÁTICA ---
       - name: Generar Configuración
         run: |
+          # Borramos configuraciones viejas
           rm -f pyproject.toml requirements.txt
+          
+          # Creamos requisitos
           echo "flet" > requirements.txt
           
+          # Creamos el DNI de la app
           echo "[tool.flet]" > pyproject.toml
           echo 'product_name = "Vegan Green"' >> pyproject.toml
           echo 'org = "com.vegangreen.app"' >> pyproject.toml
@@ -70,19 +62,14 @@ jobs:
           echo "[tool.flet.app]" >> pyproject.toml
           echo 'path = "main.py"' >> pyproject.toml
 
-      # 8. ¡SOLUCIÓN ERROR DE LICENCIAS!
-      # Aceptamos las licencias de Android automáticamente
-      - name: Aceptar Licencias Android
-        run: |
-          yes | flutter doctor --android-licenses || true
-          flutter doctor -v
-
-      # 9. CONSTRUIR
+      # --- CONSTRUIR ---
       - name: Construir APK
+        # Comando simple. Ahora sí funcionará porque hemos forzado la existencia de main.py
         run: flet build apk -vv
         
-      - name: Subir APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: vegan-green-app
           path: build/apk/
+
+
